@@ -14,6 +14,7 @@ import { Metadata } from 'next';
 import HeroSection from '@/components/ui/HeroSection';
 import AffiliationsSlider from '@/components/ui/AffiliationsSlider';
 import { AnimatePresence } from 'framer-motion';
+import PractoTile from '@/components/seo/PractoTile';
 
 const specialties = [
   {
@@ -201,8 +202,13 @@ export default function HomePage() {
             <div className="inline-block bg-soi-mint-500/20 text-white px-4 py-1 rounded-lg text-sm font-medium mb-6 backdrop-blur-sm border border-soi-mint-500/30">
               Excellence in Motion
             </div>
+            {/* Static, keyword-rich H1 — server-rendered so crawlers and AI
+                engines read the primary local-intent phrase. */}
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-              Expert Care for <br />
+              Orthopedic &amp; Sports Injury Specialists in Bangalore
+            </h1>
+            {/* Animated specialty tagline (visual flair, not the H1). */}
+            <div className="text-2xl md:text-4xl font-bold leading-tight mb-2">
               <span className="text-soi-mint-400 bg-clip-text bg-gradient-to-r from-soi-mint-400 to-soi-pink-400 relative inline-block">
                 {mounted && (
                   <AnimatePresence>
@@ -226,9 +232,9 @@ export default function HomePage() {
                   {mounted ? specialtyWords[currentSpecialtyIndex] : 'Joint Health'}
                 </span>
               </span>
-            </h1>
+            </div>
             <p className="mt-6 text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed font-light">
-              Comprehensive orthopedic evaluation and treatment from experienced specialists dedicated to restoring your mobility and comfort.
+              Expert ACL reconstruction, arthroscopy, joint replacement and sports injury care in HSR Layout — led by Dr Naveen Kumar L V.
             </p>
           </div>
         }
@@ -252,6 +258,9 @@ export default function HomePage() {
           </Button>
         </div>
       </HeroSection>
+
+      {/* Practo social-proof tile */}
+      <PractoTile />
 
       {/* Professional Trust Indicators Section (Moved from Hero) */}
       <section id="trust-indicators" className="py-20 bg-white">

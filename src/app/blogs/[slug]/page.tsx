@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Metadata } from 'next';
 import SchemaMarkup from '@/components/SchemaMarkup';
 import { createArticleSchema, createBreadcrumbSchema, sanitizeForSchema } from '@/lib/schema/utils';
+import { notFound } from 'next/navigation';
+import { safeCanonical, SITE_URL, PRIMARY_DOCTOR, stripStagingHost } from '@/lib/seo/site';
+import ReviewedBy from '@/components/seo/ReviewedBy';
 
 // Define props for the dynamic page
 type Props = {
@@ -32,24 +35,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!post) {
     return {
       title: 'Post Not Found',
-      description: 'The requested blog post could not be found.'
+      description: 'The requested blog post could not be found.',
+      robots: { index: false, follow: false },
     };
   }
+
+  // Blog posts rank at the top-level /[slug]; /blogs/[slug] 308-redirects there,
+  // so the canonical points at the top-level URL.
+  const canonical = safeCanonical(`/${params.slug}`, post.canonical_url);
 
   return {
     title: post.meta_title || post.title,
     description: post.meta_description || post.excerpt,
+    alternates: { canonical },
     openGraph: {
       title: post.title,
       description: post.excerpt,
-      images: post.featured_image_url ? [post.featured_image_url] : [],
+      url: canonical,
+      images: post.featured_image_url ? [stripStagingHost(post.featured_image_url)] : [],
     },
   };
 }
 
 // Social share component (now a server component)
 const SocialShare = ({ url, title }: { url: string; title: string }) => {
-  const baseUrl = process.env.NEXT_PUBLIC_DOMAIN || 'https://staged-doc.up.railway.app';
+  const baseUrl = SITE_URL;
   const encodedUrl = encodeURIComponent(`${baseUrl}${url}`);
   const encodedTitle = encodeURIComponent(title);
   
@@ -130,45 +140,36 @@ export default async function PostPage({ params }: Props) {
   const post = await getPostBySlug(slug);
   
   if (!post) {
-    // Return not found page
-    return (
-      <div className="min-h-screen bg-tint-expertise">
-        <SiteHeader />
-        <div className="container mx-auto px-4 py-20 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Post Not Found</h1>
-          <p className="text-gray-600 mb-6">The blog post you're looking for could not be found.</p>
-          <Link 
-            href="/blogs" 
-            className="inline-flex items-center text-soi-purple-600 hover:text-soi-navy-600 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Back to all posts
-          </Link>
-        </div>
-        <SiteFooter />
-      </div>
-    );
+    // Real HTTP 404 (renders the branded src/app/not-found.tsx).
+    notFound();
   }
-  
+
   // Fetch related posts - now we know post is not null
   const relatedPosts = await getRelatedPosts(slug, post.category);
 
   // Create schema markup for the blog post
-  const baseUrl = process.env.NEXT_PUBLIC_DOMAIN || 'https://sportsorthopedics.in';
+  const baseUrl = SITE_URL;
+  const canonicalUrl = safeCanonical(`/${post.slug}`, post.canonical_url);
   const schemas = [
     createArticleSchema({
       headline: post.title,
       description: post.excerpt || sanitizeForSchema(post.content_text),
-      image: post.featured_image_url,
+      image: stripStagingHost(post.featured_image_url),
       datePublished: post.date_created,
-      dateModified: post.date_created,
+      dateModified: post.date_updated || post.date_created,
       articleBody: sanitizeForSchema(post.content_text),
       keywords: post.category ? [post.category] : undefined,
-      url: `${baseUrl}/blogs/${post.slug}`,
+      url: canonicalUrl,
       author: {
-        name: 'Sports Orthopedics Institute',
-        url: baseUrl
-      }
+        name: PRIMARY_DOCTOR.name,
+        url: `${baseUrl}/surgeons-staff/naveen`,
+      },
+      // @ts-ignore - reviewedBy added for E-E-A-T
+      reviewedBy: {
+        '@type': 'Person',
+        name: PRIMARY_DOCTOR.name,
+        url: `${baseUrl}/surgeons-staff/naveen`,
+      },
     }),
     createBreadcrumbSchema([
       { name: 'Home', url: baseUrl },
@@ -232,6 +233,9 @@ export default async function PostPage({ params }: Props) {
                   Back to all posts
                 </Link>
               </div>
+
+              {/* E-E-A-T byline */}
+              <ReviewedBy updated={post.date_updated || post.date_created} className="mb-8 pb-6 border-b border-gray-200" />
 
               {/* Article Content */}
               <div className="prose prose-lg max-w-none prose-headings:text-soi-navy-800 prose-headings:font-bold prose-a:text-soi-purple-600 prose-a:no-underline hover:prose-a:underline prose-strong:text-soi-navy-700 prose-blockquote:border-l-soi-purple-600 prose-blockquote:text-soi-navy-600">

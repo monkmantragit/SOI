@@ -20,11 +20,6 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '73n.0c8.myftpupload.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
         hostname: 'sportsorthopedics.in',
         pathname: '/**',
       },
@@ -136,51 +131,42 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  async rewrites() {
-    return [
-      {
-        source: '/posts',
-        destination: '/blogs',
-      },
-      {
-        source: '/posts/:path*',
-        destination: '/:path*',
-      }
-    ]
-  },
-  
   async redirects() {
     return [
-      {
-        source: '/publication/:slug',
-        destination: '/publications/:slug',
-        permanent: true,
-      },
-      {
-        source: '/publication',
-        destination: '/publications',
-        permanent: true,
-      },
-      {
-        source: '/my-bookings',
-        destination: '/appointment-booking-info',
-        permanent: true,
-      },
-      {
-        source: '/appointment-cancellation-confirmation',
-        destination: '/appointment-booking-info',
-        permanent: true,
-      },
-      {
-        source: '/appointment-reschedule',
-        destination: '/appointment-booking-info',
-        permanent: true,
-      },
-      {
-        source: '/bookingpress-complete-payment',
-        destination: '/appointment-booking-info',
-        permanent: true,
-      }
+      // --- Legacy /posts/* (was a rewrite, which duplicated content under a
+      //     second URL). Now a permanent redirect to the top-level slug. ---
+      { source: '/posts', destination: '/blogs', permanent: true },
+      { source: '/posts/:slug*', destination: '/:slug*', permanent: true },
+
+      // --- Publications legacy paths ---
+      { source: '/publication/:slug', destination: '/publications/:slug', permanent: true },
+      { source: '/publication', destination: '/publications', permanent: true },
+
+      // --- Appointment/booking legacy paths ---
+      { source: '/my-bookings', destination: '/appointment-booking-info', permanent: true },
+      { source: '/appointment-cancellation-confirmation', destination: '/appointment-booking-info', permanent: true },
+      { source: '/appointment-reschedule', destination: '/appointment-booking-info', permanent: true },
+      { source: '/bookingpress-complete-payment', destination: '/appointment-booking-info', permanent: true },
+
+      // --- Cannibalisation: merge duplicate procedure pages into the Bangalore
+      //     lander that carries the rankings. ---
+      { source: '/procedure-surgery/acl-reconstruction', destination: '/acl-reconstruction-surgery-in-bangalore', permanent: true },
+      { source: '/procedure-surgery/meniscal-repair', destination: '/acl-reconstruction-and-meniscus-repair', permanent: true },
+      { source: '/procedure-surgery/rotator-cuff-repair', destination: '/rotator-cuff-surgery-in-bangalore', permanent: true },
+      { source: '/procedure-surgery/hip-replacement-thr', destination: '/total-hip-replacement-in-bangalore', permanent: true },
+
+      // --- Legacy WordPress single-word paths ---
+      { source: '/meniscalrepair', destination: '/acl-reconstruction-and-meniscus-repair', permanent: true },
+      { source: '/wrist-pain', destination: '/bone-joint-school', permanent: true },
+
+      // --- Dead routes removed from the app (redirect any stale inbound links) ---
+      { source: '/categories', destination: '/', permanent: true },
+      { source: '/categories/:path*', destination: '/', permanent: true },
+      { source: '/pages', destination: '/', permanent: true },
+      { source: '/pages/:path*', destination: '/', permanent: true },
+      { source: '/design', destination: '/', permanent: true },
+      { source: '/design/:path*', destination: '/', permanent: true },
+      { source: '/surgeons-staff/test-directus', destination: '/surgeons-staff', permanent: true },
     ];
   }
 };

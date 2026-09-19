@@ -6,6 +6,7 @@ import SiteFooter from '@/components/layout/SiteFooter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const metadata = {
+  alternates: { canonical: 'https://sportsorthopedics.in/acl-reconstruction-surgery-in-bangalore' },
   title: 'ACL Reconstruction Surgery Doctor in Bangalore| Sports Ortho',
   description: 'Get expert ACL reconstruction surgery in Bangalore with top sports ortho specialists. Restore mobility and recover faster with advanced treatment options.',
 };

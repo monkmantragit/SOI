@@ -6,6 +6,7 @@ import SiteFooter from '@/components/layout/SiteFooter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const metadata = {
+  alternates: { canonical: 'https://sportsorthopedics.in/acl-tear-laser-therapy' },
   title: 'ACL Tear Laser Therapy: Benefits, Cost & Recovery in India',
   description: 'Explore how laser therapy helps heal ACL tears faster. Learn benefits, cost in India, and expert tips for non-surgical knee ligament recovery.',
 };
@@ -30,7 +31,7 @@ const AclTearLaserTherapyPage = () => {
           {/* Hero Image */}
           <div className="my-6 sm:my-8 md:my-10 relative w-full aspect-[16/9] rounded-lg overflow-hidden shadow-lg border border-soi-navy-200">
             <Image 
-              src="https://73n.0c8.myftpupload.com/wp-content/uploads/2025/04/New-Project-1-1-1024x576-1024x585.jpg" 
+              src="https://sportsorthopedics.in/wp-content/uploads/2025/04/New-Project-1-1-1024x576-1024x585.jpg" 
               alt="ACL Tear Laser Therapy" 
               fill
               style={{ objectFit: 'cover' }}
@@ -41,7 +42,7 @@ const AclTearLaserTherapyPage = () => {
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 sm:mb-8 text-center" style={{ color: brandColors.primary }}>ACL Tear Laser Therapy: Benefits, Cost &amp; Recovery in India</h1>
 
           {/* Introduction */}
-          <p className="text-lg md:text-xl mb-6 leading-relaxed" style={{ color: brandColors.lightText }}>ACL (<Link href="https://73n.0c8.myftpupload.com/procedure-surgery/acl-reconstruction/" target="_blank" rel="nofollow noopener noreferrer" className="font-medium hover:underline" style={{ color: brandColors.accent }}>Anterior Cruciate Ligament</Link>) injuries are among the most debilitating for athletes and active individuals. Traditional treatments often include long rehabilitation periods, invasive surgery, and a tough mental and physical recovery. But what if healing could be faster, less painful, and even non-invasive? That's where laser treatment comes in—a modern, science-backed approach gaining traction among sports medicine professionals.</p>
+          <p className="text-lg md:text-xl mb-6 leading-relaxed" style={{ color: brandColors.lightText }}>ACL (<Link href="https://sportsorthopedics.in/procedure-surgery/acl-reconstruction/" target="_blank" rel="nofollow noopener noreferrer" className="font-medium hover:underline" style={{ color: brandColors.accent }}>Anterior Cruciate Ligament</Link>) injuries are among the most debilitating for athletes and active individuals. Traditional treatments often include long rehabilitation periods, invasive surgery, and a tough mental and physical recovery. But what if healing could be faster, less painful, and even non-invasive? That's where laser treatment comes in—a modern, science-backed approach gaining traction among sports medicine professionals.</p>
           <p className="mb-6 leading-relaxed">Laser therapy is revolutionizing how we look at ligament injuries. Whether you're an athlete striving for a quick comeback or someone trying to avoid surgery, this cutting-edge treatment offers real hope. It uses light energy to accelerate the body's natural healing processes, particularly by reducing inflammation, promoting tissue regeneration, and enhancing circulation at the injury site. Sounds futuristic? It's already here and making waves.</p>
           <p className="mb-8 leading-relaxed">In this article, we're diving deep into what ACL Tear Laser Therapy involves, how it compares with traditional approaches, its advantages, risks, cost, and who it's right for. By the end, you'll have a full understanding of whether this innovative therapy could be your next step to recovery.</p>
 
@@ -57,7 +58,7 @@ const AclTearLaserTherapyPage = () => {
           <p className="mb-8 leading-relaxed">What makes the ACL particularly vulnerable is its lack of blood supply. Once torn, it doesn't heal as easily as muscles or skin. That's why alternative healing methods like laser treatment are drawing attention. They promise a way to stimulate recovery even in areas where the body naturally struggles to do so.</p>
 
           <h3 className="text-xl sm:text-2xl font-semibold mt-8 mb-4" style={{ color: brandColors.primary }}>Common Causes and Risk Factors of ACL Injuries</h3>
-          <p className="mb-6 leading-relaxed"><Link href="https://73n.0c8.myftpupload.com/bone-joint-school/acl-injury/" className="font-medium hover:underline" style={{ color: brandColors.accent }}>ACL injuries</Link> typically occur in high-impact sports or sudden movements. Jumping, pivoting, and rapid deceleration are all classic culprits. But they don't just happen to pros—weekend warriors, dancers, or even people slipping on ice are at risk.</p>
+          <p className="mb-6 leading-relaxed"><Link href="https://sportsorthopedics.in/bone-joint-school/acl-injury/" className="font-medium hover:underline" style={{ color: brandColors.accent }}>ACL injuries</Link> typically occur in high-impact sports or sudden movements. Jumping, pivoting, and rapid deceleration are all classic culprits. But they don't just happen to pros—weekend warriors, dancers, or even people slipping on ice are at risk.</p>
           <p className="mb-6 leading-relaxed">Here are some common causes:</p>
           <ul className="list-disc pl-6 mb-6 space-y-2 leading-relaxed">
             <li><strong>Sudden stops or direction changes</strong></li>
@@ -108,7 +109,7 @@ const AclTearLaserTherapyPage = () => {
           <p className="mb-8 leading-relaxed">While this route avoids surgery, it's not always ideal for those wanting a fast recovery or returning to high-level sports. That's where newer therapies, like laser treatment, come into play.</p>
 
           <h3 className="text-xl sm:text-2xl font-semibold mt-8 mb-4" style={{ color: brandColors.primary }}>Surgical Reconstruction: What It Involves and the Recovery Timeline</h3>
-          <p className="mb-6 leading-relaxed">For complete tears or high-demand athletes, <Link href="https://73n.0c8.myftpupload.com/acl-reconstruction-surgery-in-bangalore/" className="font-medium hover:underline" style={{ color: brandColors.accent }}>ACL reconstruction surgery</Link> is often the go-to. It typically involves:</p>
+          <p className="mb-6 leading-relaxed">For complete tears or high-demand athletes, <Link href="https://sportsorthopedics.in/acl-reconstruction-surgery-in-bangalore/" className="font-medium hover:underline" style={{ color: brandColors.accent }}>ACL reconstruction surgery</Link> is often the go-to. It typically involves:</p>
           <ul className="list-disc pl-6 mb-6 space-y-2 leading-relaxed">
             <li>Removing the torn ligament</li>
             <li>Replacing it with a graft (from the patient&apos;s own tendon or a donor)</li>

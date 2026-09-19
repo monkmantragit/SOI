@@ -6,6 +6,7 @@ import SiteFooter from '@/components/layout/SiteFooter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const metadata = {
+  alternates: { canonical: 'https://sportsorthopedics.in/robotic-knee-replacement-surgeon-in-bangalore' },
   title: 'Robotic Knee Replacement Surgeon in Bangalore | Sports Ortho',
   description: 'Consult the top Robotic Knee Replacement Surgeon in Bangalore. Get advanced, precise knee surgery and faster recovery with expert orthopedic care',
 };

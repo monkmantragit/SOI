@@ -12,6 +12,9 @@ import { getStaffMemberBySlugAction, getRelatedStaffAction } from '../actions';
 import { StaffMember } from '@/types/staff';
 import SchemaMarkup from '@/components/SchemaMarkup';
 import { createPhysicianSchema, createBreadcrumbSchema, sanitizeForSchema } from '@/lib/schema/utils';
+import { notFound } from 'next/navigation';
+import { safeCanonical, stripStagingHost, PRIMARY_DOCTOR, PRACTO } from '@/lib/seo/site';
+import CredentialsBlock from '@/components/seo/CredentialsBlock';
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const staffMember = await getStaffMemberBySlugAction(params.slug);
@@ -19,20 +22,24 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!staffMember) {
     return {
       title: 'Staff Member Not Found',
+      robots: { index: false, follow: false },
     };
   }
 
   const name = staffMember.title;
-  
+  const canonical = safeCanonical(`/surgeons-staff/${params.slug}`, staffMember.canonical_url);
+
   return {
     title: `${name} | Sports Orthopedics Institute`,
     description: staffMember.meta_description || staffMember.excerpt || `Meet ${name}, a dedicated member of our expert healthcare team at Sports Orthopedics Institute.`,
+    alternates: { canonical },
     openGraph: {
       title: staffMember.meta_title || `${name} | Sports Orthopedics Institute`,
       description: staffMember.meta_description || staffMember.excerpt || `Meet ${name}, a dedicated member of our expert healthcare team.`,
+      url: canonical,
       images: staffMember.featured_image_url ? [
         {
-          url: staffMember.featured_image_url,
+          url: stripStagingHost(staffMember.featured_image_url),
           width: 1200,
           height: 630,
           alt: name,
@@ -83,16 +90,8 @@ export default async function StaffMemberPage({ params }: { params: { slug: stri
   const staffMember = await getStaffMemberBySlugAction(params.slug);
   
   if (!staffMember) {
-    return (
-      <div className="min-h-screen bg-tint-care flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-soi-navy-800 mb-4">Staff Member Not Found</h1>
-          <Link href="/surgeons-staff" className="text-soi-pink-600 hover:text-soi-navy-600">
-            ← Back to Team
-          </Link>
-        </div>
-          </div>
-    );
+    // Real HTTP 404 (renders the branded src/app/not-found.tsx).
+    notFound();
   }
 
   // Get related staff members
@@ -106,19 +105,47 @@ export default async function StaffMemberPage({ params }: { params: { slug: stri
   const heroDescription = staffMember.excerpt || 
     (staffMember.content_text ? staffMember.content_text.slice(0, 150) + '...' : null);
 
+  // Is this the lead surgeon? (drives the extra E-E-A-T credentials.)
+  const isPrimaryDoctor =
+    /naveen/i.test(params.slug) || /naveen/i.test(name);
+
   // Create schema markup for the physician/staff member
   const baseUrl = process.env.NEXT_PUBLIC_DOMAIN || 'https://sportsorthopedics.in';
+  const physicianSchema: any = createPhysicianSchema({
+    name: name,
+    url: `${baseUrl}/surgeons-staff/${params.slug}`,
+    image: imageUrl.startsWith('http') ? stripStagingHost(imageUrl) : `${baseUrl}${imageUrl}`,
+    jobTitle: position,
+    description: sanitizeForSchema(staffMember.content_text || heroDescription),
+    medicalSpecialty: ['Orthopedic', 'SportsMedicine'],
+    hospitalAffiliation: undefined,
+    alumniOf: undefined,
+  });
+
+  if (isPrimaryDoctor) {
+    // Karnataka Medical Council registration + memberships + verified profiles +
+    // the Practo aggregate rating.
+    physicianSchema.identifier = {
+      '@type': 'PropertyValue',
+      propertyID: 'KMC Registration',
+      value: PRIMARY_DOCTOR.kmc,
+    };
+    physicianSchema.memberOf = PRIMARY_DOCTOR.memberships.map((m) => ({
+      '@type': 'Organization',
+      name: m,
+    }));
+    physicianSchema.sameAs = [...PRIMARY_DOCTOR.sameAs];
+    physicianSchema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: PRACTO.ratingValue,
+      reviewCount: PRACTO.reviewCount,
+      bestRating: PRACTO.bestRating,
+      worstRating: PRACTO.worstRating,
+    };
+  }
+
   const schemas = [
-    createPhysicianSchema({
-      name: name,
-      url: `${baseUrl}/surgeons-staff/${params.slug}`,
-      image: imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`,
-      jobTitle: position,
-      description: sanitizeForSchema(staffMember.content_text || heroDescription),
-      medicalSpecialty: ['Orthopedic', 'SportsMedicine'],
-      hospitalAffiliation: undefined,
-      alumniOf: undefined
-    }),
+    physicianSchema,
     createBreadcrumbSchema([
       { name: 'Home', url: baseUrl },
       { name: 'Our Team', url: `${baseUrl}/surgeons-staff` },
@@ -210,6 +237,7 @@ export default async function StaffMemberPage({ params }: { params: { slug: stri
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Main Content - Always show with fallback content */}
               <div className="lg:col-span-2">
+                {isPrimaryDoctor && <CredentialsBlock />}
                 <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-100">
                   <div className="flex items-center mb-4">
                     <User className="h-5 w-5 text-soi-pink-500 mr-2" />

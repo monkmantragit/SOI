@@ -6,6 +6,7 @@ import SiteFooter from '@/components/layout/SiteFooter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const metadata = {
+  alternates: { canonical: 'https://sportsorthopedics.in/total-hip-replacement-in-bangalore' },
   title: 'Total Hip Replacement in Bangalore | Expert Surgeon',
   description: 'Looking for total hip replacement in Bangalore? Top-rated surgeons, modern facilities & personalized care near you. Contact us today!',
 };

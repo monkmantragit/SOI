@@ -6,6 +6,7 @@ import SiteFooter from '@/components/layout/SiteFooter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const metadata = {
+  alternates: { canonical: 'https://sportsorthopedics.in/meniscus-tear-exercises-to-avoid' },
   title: 'Meniscus Tear Exercises to Avoid for Fast Recovery',
   description: 'Learn which meniscus tear exercises to avoid to prevent further injury. Find safer alternatives and expert tips for faster, pain-free knee recovery',
 };
@@ -61,7 +62,7 @@ const MeniscusTearExercisesToAvoidPage = () => {
         {/* Hero Image */}
         <div className="mb-8 sm:mb-12 md:mb-16 relative w-full aspect-[16/9] rounded-lg overflow-hidden shadow-lg">
           <Image 
-            src="https://73n.0c8.myftpupload.com/wp-content/uploads/2025/04/New-Project-3.jpg" 
+            src="https://sportsorthopedics.in/wp-content/uploads/2025/04/New-Project-3.jpg" 
             alt="Meniscus Tear Exercises to Avoid" 
             fill
             style={{ objectFit: 'cover' }}

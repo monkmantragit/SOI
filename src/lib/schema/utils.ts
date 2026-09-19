@@ -18,53 +18,40 @@ import type {
   OpeningHoursSpecification,
   MedicalScholarlyArticle,
 } from './types';
+import { NAP, OPENING_HOURS as SITE_HOURS, SITE_NAME, SITE_URL, SITE_DESCRIPTION, SOCIAL, LOGO_URL } from '@/lib/seo/site';
 
 export const ORGANIZATION_INFO = {
-  name: 'Sports Orthopedics Institute',
-  url: 'https://sportsorthopedics.in',
-  logo: 'https://sportsorthopedics.in/logo.jpg',
-  description: 'Sports Orthopedics Institute offers specialized orthopedic care for sports injuries, joint reconstruction, and comprehensive treatment of musculoskeletal conditions.',
-  telephone: '+91-80-1234567',
-  email: 'info@sportsorthopedics.in',
+  name: SITE_NAME,
+  url: SITE_URL,
+  logo: LOGO_URL,
+  description: SITE_DESCRIPTION,
+  telephone: NAP.phone,
+  email: NAP.email,
   foundingDate: '2010-01-01',
-  sameAs: [
-    'https://www.facebook.com/sportsorthopedics',
-    'https://twitter.com/sportsortho',
-    'https://www.instagram.com/sportsorthopedics',
-    'https://www.linkedin.com/company/sports-orthopedics-institute',
-    'https://www.youtube.com/channel/sportsorthopedics'
-  ]
+  sameAs: [...SOCIAL],
 };
 
 export const ADDRESS_INFO: PostalAddress = {
   '@type': 'PostalAddress',
-  streetAddress: '123 Medical Plaza, MG Road',
-  addressLocality: 'Bangalore',
-  addressRegion: 'Karnataka',
-  postalCode: '560001',
-  addressCountry: 'IN'
+  streetAddress: NAP.street,
+  addressLocality: NAP.locality,
+  addressRegion: NAP.region,
+  postalCode: NAP.postalCode,
+  addressCountry: NAP.country
 };
 
 export const GEO_COORDINATES: GeoCoordinates = {
   '@type': 'GeoCoordinates',
-  latitude: 12.9716,
-  longitude: 77.5946
+  latitude: NAP.geo.lat,
+  longitude: NAP.geo.lng
 };
 
-export const OPENING_HOURS: OpeningHoursSpecification[] = [
-  {
-    '@type': 'OpeningHoursSpecification',
-    dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-    opens: '09:00',
-    closes: '18:00'
-  },
-  {
-    '@type': 'OpeningHoursSpecification',
-    dayOfWeek: 'Saturday',
-    opens: '09:00',
-    closes: '14:00'
-  }
-];
+export const OPENING_HOURS: OpeningHoursSpecification[] = SITE_HOURS.map((h) => ({
+  '@type': 'OpeningHoursSpecification',
+  dayOfWeek: [...h.days],
+  opens: h.opens,
+  closes: h.closes,
+}));
 
 export function createOrganizationSchema(): Organization {
   return {

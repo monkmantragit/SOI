@@ -8,6 +8,8 @@ import PublicationCitation from './components/PublicationCitation';
 import ClientImage from '@/app/components/ClientImage';
 import { getPublicationBySlugAction, getRelatedPublicationsAction } from '@/app/actions/publications';
 import type { Publication } from '@/types/publications';
+import { notFound } from 'next/navigation';
+import { safeCanonical } from '@/lib/seo/site';
 
 // Constants
 const DEFAULT_IMAGE = '/images/default-procedure.jpg';
@@ -34,25 +36,28 @@ export async function generateMetadata(
       return {
         title: 'Publication Not Found',
         description: 'The requested publication could not be found.',
+        robots: { index: false, follow: false },
       };
     }
 
     // Clean title for display
     const cleanTitle = publication.title.replace(' | Sports Orthopedics', '').trim();
-    
+    const canonical = safeCanonical(`/publications/${params.slug}`, publication.canonical_url);
+
     return {
       title: publication.meta_title || `${cleanTitle} | Sports Orthopedics`,
       description: publication.meta_description || `Read about ${cleanTitle} - scholarly article by our orthopedic specialists.`,
       openGraph: {
         title: cleanTitle,
         description: publication.meta_description || `Scholarly article: ${cleanTitle}`,
+        url: canonical,
         images: publication.featured_image_url ? [publication.featured_image_url] : [DEFAULT_IMAGE],
         type: 'article',
         publishedTime: publication.publication_date || publication.date_created,
         authors: publication.authors ? [publication.authors] : undefined,
       },
       alternates: {
-        canonical: publication.canonical_url || `/publications/${publication.slug}`,
+        canonical,
       },
     };
   } catch (error) {
@@ -114,19 +119,8 @@ export default async function PublicationDetail({ params }: Props) {
   const publication = await getPublicationBySlugAction(params.slug);
 
   if (!publication) {
-    return (
-      <div className="min-h-screen bg-tint-authority">
-        <SiteHeader />
-        <div className="container mx-auto px-4 py-12 text-center">
-          <h1 className="text-2xl font-bold text-soi-navy-800 mb-4">Publication Not Found</h1>
-          <p className="text-soi-navy-600 mb-6">The requested publication could not be found.</p>
-          <Link href="/publications" className="text-soi-purple-600 hover:text-soi-navy-600 hover:underline">
-            Back to Publications
-          </Link>
-        </div>
-        <SiteFooter />
-      </div>
-    );
+    // Real HTTP 404 (renders the branded src/app/not-found.tsx).
+    notFound();
   }
 
   // Get related publications

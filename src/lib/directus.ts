@@ -38,7 +38,7 @@ const client: any = (() => {
   const restMiddleware = activeToken ? {
     onRequest: (options: any) => ({
       ...options,
-      cache: 'no-store', // CRITICAL: Disable caching for production
+      next: { revalidate: 300, tags: ['directus'] }, // ISR: cache 5 min, purge via /api/revalidate
       headers: {
         ...options.headers,
         Authorization: `Bearer ${activeToken}`,
@@ -47,7 +47,7 @@ const client: any = (() => {
   } : {
     onRequest: (options: any) => ({
       ...options,
-      cache: 'no-store',
+      next: { revalidate: 300, tags: ['directus'] },
     }),
   };
 
@@ -59,7 +59,7 @@ function createPublicClient() {
   return createDirectus(directusUrl).with(rest({
     onRequest: (options: any) => ({
       ...options,
-      cache: 'no-store', // CRITICAL: Disable caching for production
+      next: { revalidate: 300, tags: ['directus'] }, // ISR: cache 5 min, purge via /api/revalidate
       headers: {
         ...options.headers,
         Authorization: `Bearer ${directusPublicToken}`,

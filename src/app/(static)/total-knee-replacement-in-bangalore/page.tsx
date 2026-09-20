@@ -6,6 +6,7 @@ import SiteFooter from '@/components/layout/SiteFooter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const metadata = {
+  alternates: { canonical: 'https://sportsorthopedics.in/total-knee-replacement-in-bangalore' },
   title: 'Total Knee Replacement in Bangalore | Expert Surgeon',
   description: 'Get advanced total knee replacement in Bangalore with expert surgeons and cutting-edge care. Book a consultation today for pain-free mobility',
 };

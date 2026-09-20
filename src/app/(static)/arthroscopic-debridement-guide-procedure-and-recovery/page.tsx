@@ -6,6 +6,7 @@ import SiteFooter from '@/components/layout/SiteFooter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const metadata = {
+  alternates: { canonical: 'https://sportsorthopedics.in/arthroscopic-debridement-guide-procedure-and-recovery' },
   title: 'Arthroscopic Debridement Guide: Procedure and Recovery',
   description: 'Learn about arthroscopic debridement, its procedure, benefits, and recovery timeline. Discover how this minimally invasive surgery relieves joint pain.',
 };
@@ -108,7 +109,7 @@ const ArthroscopicDebridementPage = () => {
           {/* Image Section 1 */}
           <section className="mb-10 sm:mb-12 flex justify-center">
             <Image 
-              src="https://73n.0c8.myftpupload.com/wp-content/uploads/2025/01/e92dc3_602bfe79dad24bbfae7716b65631f3fcmv2.jpg" 
+              src="https://sportsorthopedics.in/wp-content/uploads/2025/01/e92dc3_602bfe79dad24bbfae7716b65631f3fcmv2.jpg" 
               alt="Arthroscopic Debridement procedure illustration" 
               width={833} 
               height={555} 
@@ -176,7 +177,7 @@ const ArthroscopicDebridementPage = () => {
           {/* Image Section 2 */}
           <section className="mb-10 sm:mb-12 flex justify-center">
             <Image 
-              src="https://73n.0c8.myftpupload.com/wp-content/uploads/2025/01/e92dc3_36b89fd84edb4281aee2598e372f7f51mv2.jpg" 
+              src="https://sportsorthopedics.in/wp-content/uploads/2025/01/e92dc3_36b89fd84edb4281aee2598e372f7f51mv2.jpg" 
               alt="Visual guide or infographic about Arthroscopic Debridement" 
               width={833} 
               height={555} 

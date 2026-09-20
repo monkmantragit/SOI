@@ -1,11 +1,9 @@
-'use server';
-
-// import { notFound } from 'next/navigation'; // Removed due to import issue
+import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
-import { getProcedureSurgeryBySlug, getRelatedProcedures, getImageUrl } from '@/lib/directus';
+import { getProcedureSurgeryBySlug, getRelatedProcedures, getImageUrl, getProcedureSurgeries } from '@/lib/directus';
 import BookingSection from '../components/BookingSection';
 import { Calendar, CheckCircle } from 'lucide-react';
 import ContentRenderer from '@/components/shared/ContentRenderer';
@@ -17,28 +15,34 @@ interface ProcedurePageProps {
   params: { slug: string };
 }
 
+// Merged procedures 301-redirect to their Bangalore lander; don't pre-render them.
+const MERGED_PROCEDURE_SLUGS = new Set([
+  'acl-reconstruction',
+  'meniscal-repair',
+  'rotator-cuff-repair',
+  'hip-replacement-thr',
+]);
+
+export const revalidate = 300;
+
+export async function generateStaticParams() {
+  try {
+    const res = await getProcedureSurgeries(1000);
+    const items = (res?.data || []) as any[];
+    return items
+      .filter((i) => i?.slug && !MERGED_PROCEDURE_SLUGS.has(i.slug))
+      .map((i) => ({ slug: i.slug }));
+  } catch {
+    return [];
+  }
+}
+
 export default async function ProcedurePage({ params }: ProcedurePageProps) {
   const procedure = await getProcedureSurgeryBySlug(params.slug);
   
   if (!procedure) {
-    return (
-      <div className="min-h-screen bg-tint-authority">
-        <SiteHeader theme="light" />
-        <main className="container mx-auto px-4 py-16">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-soi-navy-800 mb-4">Procedure Not Found</h1>
-            <p className="text-soi-navy-600 mb-8">The requested procedure could not be found.</p>
-            <Link 
-              href="/procedure-surgery" 
-              className="inline-block bg-soi-navy-500 text-white px-6 py-3 rounded-lg hover:bg-soi-navy-600 transition-colors border-2 border-soi-purple-400"
-            >
-              Back to Procedures
-            </Link>
-          </div>
-        </main>
-        <SiteFooter />
-      </div>
-    );
+    // Return a real HTTP 404 (renders the branded src/app/not-found.tsx).
+    notFound();
   }
 
   // Get related procedures

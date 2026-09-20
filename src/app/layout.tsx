@@ -3,9 +3,13 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "../styles/globals.css";
 import { Toaster } from 'react-hot-toast';
-import { Suspense } from 'react';
-import Loading from './loading';
 import { GoogleAnalytics } from '@next/third-parties/google';
+import { Suspense } from 'react';
+import SchemaMarkup from '@/components/SchemaMarkup';
+import WhatsAppFloat from '@/components/WhatsAppFloat';
+import AZIndex from '@/components/seo/AZIndex';
+import { siteGraph } from '@/lib/seo/schema';
+import { SITE_NAME, SITE_URL, SITE_DESCRIPTION, DEFAULT_OG_IMAGE } from '@/lib/seo/site';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,14 +19,14 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Sports Orthopedics Institute | Excellence in Motion",
-    template: "%s"
+    default: `${SITE_NAME} | Orthopedic & Sports Injury Specialists in Bangalore`,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: "Sports Orthopedics Institute offers specialized orthopedic care for sports injuries, joint reconstruction, and comprehensive treatment of musculoskeletal conditions.",
-  keywords: ["orthopedics", "sports medicine", "joint reconstruction", "bone", "joint", "surgery", "knee", "shoulder", "hip", "treatment"],
-  authors: [{ name: "Sports Orthopedics Institute", url: "https://sportsorthopedics.in" }],
-  creator: "Sports Orthopedics Institute",
-  publisher: "Sports Orthopedics Institute",
+  description: SITE_DESCRIPTION,
+  keywords: ["orthopedics", "sports medicine", "joint reconstruction", "bone", "joint", "surgery", "knee", "shoulder", "hip", "treatment", "bangalore", "hsr layout"],
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
   verification: {
     google: "WG2k4FYTe0K1OeP4FzV1OxFKmGUO0OJmsQUQveB-9zY",
   },
@@ -31,31 +35,31 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL("https://sportsorthopedics.in"),
-  alternates: {
-    canonical: "/",
-  },
+  metadataBase: new URL(SITE_URL),
+  // NOTE: no site-wide `alternates.canonical` here — each route emits its own
+  // canonical via safeCanonical(). A root "/" canonical previously made Google
+  // treat every page as a duplicate of the homepage.
   openGraph: {
-    title: "Sports Orthopedics Institute | Excellence in Motion",
-    description: "Specialized orthopedic care for sports injuries, joint reconstruction, and treatment of musculoskeletal conditions.",
-    url: "https://sportsorthopedics.in",
-    siteName: "Sports Orthopedics Institute",
-    locale: "en_US",
+    title: `${SITE_NAME} | Orthopedic & Sports Injury Specialists in Bangalore`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    locale: "en_IN",
     type: "website",
     images: [
       {
-        url: "/og-image.jpg",
+        url: DEFAULT_OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: "Sports Orthopedics Institute",
+        alt: SITE_NAME,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sports Orthopedics Institute | Excellence in Motion",
-    description: "Specialized orthopedic care for sports injuries, joint reconstruction, and treatment of musculoskeletal conditions.",
-    images: ["/og-image.jpg"],
+    title: `${SITE_NAME} | Orthopedic & Sports Injury Specialists in Bangalore`,
+    description: SITE_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE],
   },
   icons: {
     icon: [
@@ -73,8 +77,8 @@ export const viewport: Viewport = {
   ],
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Zoom re-enabled (was maximumScale:1 / userScalable:false — an accessibility
+  // and mobile-usability problem).
 };
 
 export default function RootLayout({
@@ -88,14 +92,26 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <SchemaMarkup schema={siteGraph()} />
       </head>
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`} suppressHydrationWarning>
+        {/*
+          No root Suspense/Loading boundary here. It made notFound() and
+          redirect() resolve to HTTP 200 for the whole app. Route-level
+          loading.tsx / Suspense should be used where needed instead.
+        */}
         <main suppressHydrationWarning>
-          <Suspense fallback={<Loading />}>
-            {children}
-          </Suspense>
+          {children}
         </main>
-        <Toaster 
+        {/* Server-rendered A–Z directory band on every page (crawl paths).
+            Suspense here wraps only the index, not children, so it does not
+            affect page-level notFound()/redirect() status codes. */}
+        <Suspense fallback={null}>
+          {/* @ts-expect-error Async Server Component */}
+          <AZIndex />
+        </Suspense>
+        <WhatsAppFloat />
+        <Toaster
           position="top-right"
           toastOptions={{
             style: {

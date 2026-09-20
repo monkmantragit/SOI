@@ -28,6 +28,8 @@
     "urls:update-links": "node scripts/update-link-urls.js",
     "urls:find-unsplash": "node scripts/search-unsplash-urls.js",
     "urls:find-unsplash-csv": "node scripts/search-csv-unsplash.js",
+    "seo:migrate:dry": "node scripts/seo-migrate.mjs --dry",
+    "seo:migrate": "node scripts/seo-migrate.mjs",
     "_commented_postbuild": "next-sitemap --config next-sitemap.config.cjs"
   },
   "prisma": {

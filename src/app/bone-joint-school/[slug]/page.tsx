@@ -1,4 +1,4 @@
-// import { notFound } from 'next/navigation'; // Removed due to import issue
+import { notFound } from 'next/navigation';
 import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { Metadata, ResolvingMetadata } from 'next';
@@ -10,9 +10,12 @@ import TopicContentRenderer from './components/TopicContentRenderer';
 import BookingButton from './components/BookingButton';
 import ShareButton from './components/ShareButton';
 import HeroSection from '@/components/ui/HeroSection';
-import { getBoneJointContentBySlug, getRelatedBoneJointContent, getImageUrl } from '@/lib/directus';
+import { getBoneJointContentBySlug, getRelatedBoneJointContent, getImageUrl, getBoneJointContent } from '@/lib/directus';
 import SchemaMarkup from '@/components/SchemaMarkup';
 import { createEducationalProgramSchema, createArticleSchema, createBreadcrumbSchema, sanitizeForSchema } from '@/lib/schema/utils';
+import { safeCanonical } from '@/lib/seo/site';
+import { PRIMARY_DOCTOR } from '@/lib/seo/site';
+import ReviewedBy from '@/components/seo/ReviewedBy';
 
 // --- Constants ---
 const DEFAULT_FALLBACK_IMAGE = '/images_bone_joint/doctor-holding-tablet-e-health-concept-business-concept.webp';
@@ -171,11 +174,18 @@ async function getRelatedTopics(currentSlug: string, category?: string): Promise
 
 // --- Component Functions ---
 
-// Static params generation - we'll remove this for now as it requires knowing all slugs
-// export async function generateStaticParams() {
-//   // Could be implemented to fetch all slugs from Directus for static generation
-//   return [];
-// }
+// Pre-render all Bone & Joint School topics at build; new slugs fall back to ISR.
+export const revalidate = 300;
+export async function generateStaticParams() {
+  try {
+    const items = await getBoneJointContent();
+    return (items as any[])
+      .filter((i) => i?.slug)
+      .map((i) => ({ slug: i.slug }));
+  } catch {
+    return [];
+  }
+}
 
 // Metadata generation
 export async function generateMetadata(
@@ -194,16 +204,13 @@ export async function generateMetadata(
 
     const previousImages = (await parent).openGraph?.images || [];
     const ogImage = topicData.ogImage || topicData.featuredImageUrl;
+    const canonical = safeCanonical(`/bone-joint-school/${params.slug}`, topicData.canonicalUrl);
 
     return {
       title: topicData.metaTitle || `${topicData.title} | Sports Orthopedics`,
       description: topicData.metaDescription || `Learn about ${topicData.title.toLowerCase()} from expert orthopedic specialists.`,
       keywords: topicData.keywords || `${topicData.title}, orthopedics, sports medicine, ${topicData.category}`,
-      ...(topicData.canonicalUrl && {
-        alternates: {
-          canonical: topicData.canonicalUrl
-        }
-      }),
+      alternates: { canonical },
       openGraph: {
         title: topicData.metaTitle || topicData.title,
         description: topicData.metaDescription || `Learn about ${topicData.title.toLowerCase()} from expert orthopedic specialists.`,
@@ -351,17 +358,8 @@ export default async function BoneJointTopicPage({ params }: Props) {
   const topicData = await getTopicDataFromDirectus(params.slug);
 
   if (!topicData) {
-    return (
-      <div className="min-h-screen bg-tint-expertise flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-soi-navy-800 mb-4">Topic Not Found</h1>
-          <p className="text-soi-navy-600 mb-4">The requested topic could not be found.</p>
-          <Link href="/bone-joint-school" className="text-soi-purple-600 hover:text-soi-navy-600 hover:underline">
-            ← Back to Bone & Joint School
-          </Link>
-        </div>
-      </div>
-    );
+    // Real HTTP 404 (renders the branded src/app/not-found.tsx).
+    notFound();
   }
 
   const relatedTopics = await getRelatedTopics(params.slug, topicData.category);
@@ -475,6 +473,8 @@ export default async function BoneJointTopicPage({ params }: Props) {
                 />
               </div>
             </div>
+            {/* E-E-A-T byline */}
+            <ReviewedBy updated={topicData.publishDate} className="mt-4 border-t border-gray-100 pt-4" />
           </div>
         </div>
       </div>

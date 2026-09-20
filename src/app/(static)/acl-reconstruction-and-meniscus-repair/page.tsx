@@ -25,6 +25,7 @@ const brandColors = {
 
 // Metadata for the page
 export const metadata = {
+  alternates: { canonical: 'https://sportsorthopedics.in/acl-reconstruction-and-meniscus-repair' },
   title: "ACL Reconstruction and Meniscus Repair: The Ultimate Guide",
   description: "Discover everything about ACL reconstruction and meniscus repair, including surgery, recovery tips, rehab phases, costs, and return-to-sport timelines.",
   keywords: "ACL reconstruction, meniscus repair, knee surgery, sports injury, orthopedic surgeon Bangalore, Dr. Naveen Kumar",
@@ -35,7 +36,7 @@ export const metadata = {
     type: "article",
     images: [
       {
-        url: "https://73n.0c8.myftpupload.com/wp-content/uploads/2025/04/New-Project-2.jpg",
+        url: "https://sportsorthopedics.in/wp-content/uploads/2025/04/New-Project-2.jpg",
         width: 1920,
         height: 1080,
         alt: "ACL reconstruction and meniscus repair",
@@ -46,7 +47,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "ACL Reconstruction and Meniscus Repair: The Ultimate Guide",
     description: "Your complete resource for understanding ACL reconstruction and meniscus repair surgery, recovery, and rehabilitation.",
-    images: ["https://73n.0c8.myftpupload.com/wp-content/uploads/2025/04/New-Project-2.jpg"]
+    images: ["https://sportsorthopedics.in/wp-content/uploads/2025/04/New-Project-2.jpg"]
   },
 };
 
@@ -632,7 +633,7 @@ const ACLReconstructionAndMeniscusRepairPage = () => {
         {/* Hero Image */}
         <div className="mb-8 sm:mb-12 md:mb-16 relative w-full aspect-[16/9] rounded-lg overflow-hidden shadow-lg border border-soi-navy-200">
           <Image 
-            src="https://73n.0c8.myftpupload.com/wp-content/uploads/2025/04/New-Project-2.jpg" 
+            src="https://sportsorthopedics.in/wp-content/uploads/2025/04/New-Project-2.jpg" 
             alt="ACL reconstruction and meniscus repair" 
             fill
             style={{ objectFit: 'cover' }}

@@ -6,6 +6,7 @@ import SiteFooter from '@/components/layout/SiteFooter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const metadata = {
+  alternates: { canonical: 'https://sportsorthopedics.in/stages-of-avascular-necrosis-symptoms-and-treatments' },
   title: 'Stages of Avascular Necrosis: Symptoms and Treatments',
   description: 'Learn about the stages of avascular necrosis, key symptoms, and effective treatment options to manage osteonecrosis and prevent joint damage.',
 };
@@ -167,7 +168,7 @@ const StagesOfAvascularNecrosisPage = () => {
           {/* Image Section */}
           <section className="mb-10 sm:mb-12 flex justify-center">
             <Image 
-              src="https://73n.0c8.myftpupload.com/wp-content/uploads/2025/01/e92dc3_a57562ec2c6f4456bbe688f0e226efedmv2.jpg" 
+              src="https://sportsorthopedics.in/wp-content/uploads/2025/01/e92dc3_a57562ec2c6f4456bbe688f0e226efedmv2.jpg" 
               alt="healthcare" 
               width={833} 
               height={555} 

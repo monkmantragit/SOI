@@ -6,6 +6,8 @@ import Link from 'next/link'; // Added Link for potential future use
 export const metadata = {
   title: 'Appointment & Booking Information | Sports Orthopedics India',
   description: 'Find out how to manage your appointments, including checking your booking status, cancellations, rescheduling, and payment details at Sports Orthopedics India.',
+  // Utility page — not a search landing target.
+  robots: { index: false, follow: true },
 };
 
 const AppointmentBookingInfoPage = () => {

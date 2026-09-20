@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { DataTable } from '@/components/admin/DataTable';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
 import {
   fetchAppointments,
   updateAppointmentStatus,
@@ -27,11 +27,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, CalendarIcon, ListIcon, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Trash2, LogIn, LogOut, FileText, Undo2, Stethoscope } from 'lucide-react';
+import { ChevronDown, CalendarIcon, ListIcon, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Trash2, LogIn, LogOut, FileText, Undo2, Stethoscope, Search, ArrowUpDown, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { AppointmentDetailDrawer } from '@/components/admin/AppointmentDetailDrawer';
 import { Pagination, PaginationData } from '@/components/admin/Pagination';
 import AdminCalendar from '@/components/AdminCalendar';
-import DayAppointmentsDrawer from '@/components/DayAppointmentsDrawer';
 import AppointmentModal from '@/components/AppointmentModal';
 import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
 
@@ -61,6 +61,17 @@ interface Appointment {
   updatedAt: Date;
 }
 
+const SORT_OPTIONS = [
+  { key: 'upcoming', label: 'Upcoming first', sortBy: 'upcoming', sortOrder: 'desc' },
+  { key: 'date_desc', label: 'Appointment date (newest)', sortBy: 'date', sortOrder: 'desc' },
+  { key: 'date_asc', label: 'Appointment date (oldest)', sortBy: 'date', sortOrder: 'asc' },
+  { key: 'booked', label: 'Recently booked', sortBy: 'createdAt', sortOrder: 'desc' },
+  { key: 'name', label: 'Patient name (A–Z)', sortBy: 'patientName', sortOrder: 'asc' },
+  { key: 'status', label: 'Status', sortBy: 'status', sortOrder: 'asc' },
+] as const;
+
+type SortKey = (typeof SORT_OPTIONS)[number]['key'];
+
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [calendarAppointments, setCalendarAppointments] = useState<Appointment[]>([]);
@@ -68,6 +79,14 @@ export default function AppointmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+
+  // List view: server-side search + sort + optional single-date filter.
+  // Search runs only when submitted (Enter / button), not on every keystroke.
+  const [searchTerm, setSearchTerm] = useState('');
+  const [submittedSearch, setSubmittedSearch] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('upcoming');
+  const activeSort = SORT_OPTIONS.find((o) => o.key === sortKey) ?? SORT_OPTIONS[0];
+  const [listDate, setListDate] = useState<string>(''); // 'yyyy-MM-dd' or ''
   
   // Add pagination state
   const [pagination, setPagination] = useState<PaginationData>({
@@ -77,8 +96,6 @@ export default function AppointmentsPage() {
     pageCount: 0
   });
 
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedDateForDrawer, setSelectedDateForDrawer] = useState<Date | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isNewAppointment, setIsNewAppointment] = useState(false);
@@ -176,37 +193,62 @@ export default function AppointmentsPage() {
   const fmtTime = (d: Date | string | null) =>
     d ? format(new Date(d), 'h:mm a') : '—';
 
+  // Run the search only when the user submits it (Enter or the Search button).
+  const runSearch = () => {
+    const next = searchTerm.trim();
+    setSubmittedSearch(next);
+    setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    setSubmittedSearch('');
+    setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
+  };
+
+  // A new sort or date filter should always start from page 1.
+  useEffect(() => {
+    setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
+  }, [sortKey, listDate]);
+
   useEffect(() => {
     loadInitialData();
-  }, [pagination.page, pagination.pageSize, selectedMonth, viewMode]); // Reload when page, page size, month, or view changes
+    // Reload when page, page size, month, view, submitted search, sort or date changes
+  }, [pagination.page, pagination.pageSize, selectedMonth, viewMode, submittedSearch, sortKey, listDate]);
 
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
       let appointmentResult;
-      const defaultListViewFilters: any = {
-        startDate: startOfMonth(selectedMonth),
-        endDate: endOfMonth(selectedMonth),
-        // status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] } // MODIFICATION: Removed to always fetch cancelled for list view
-      };
-
+      // Physiotherapy bookings live in their own admin tab (/admin/physiotherapy-bookings),
+      // so this Appointments tab should NOT include them. Every fetch call here
+      // passes excludeSpeciality so the lists/calendars stay strictly orthopedic.
       if (viewMode === 'list') {
+        // The list shows all dates (upcoming first by default) with server-side
+        // search + sort. An optional single-date filter scopes it to one day.
+        const dayFilter = listDate
+          ? { startDate: startOfDay(new Date(`${listDate}T00:00:00`)), endDate: endOfDay(new Date(`${listDate}T00:00:00`)) }
+          : {};
         appointmentResult = await fetchAppointments(
           pagination.page,
           pagination.pageSize,
-          defaultListViewFilters
+          {
+            excludeSpeciality: 'Physiotherapist',
+            search: submittedSearch || undefined,
+            sortBy: activeSort.sortBy,
+            sortOrder: activeSort.sortOrder,
+            ...dayFilter,
+          }
         );
       } else {
-        // For calendar view, fetch all statuses for the month to display them correctly
-        // Or decide if calendar should also respect some default filters
         appointmentResult = await fetchAppointments(pagination.page, pagination.pageSize, {
             startDate: startOfMonth(selectedMonth),
-            endDate: endOfMonth(selectedMonth)
-            // No status filter here, or a different one for calendar if needed
-        }); 
+            endDate: endOfMonth(selectedMonth),
+            excludeSpeciality: 'Physiotherapist',
+        });
       }
       const [calendarAppointmentResult, doctorResult] = await Promise.all([
-        fetchAllAppointmentsForCalendar(), // This fetches ALL for full calendar display
+        fetchAllAppointmentsForCalendar({ excludeSpeciality: 'Physiotherapist' }),
         fetchDoctors()
       ]);
 
@@ -239,7 +281,9 @@ export default function AppointmentsPage() {
 
   const loadAppointments = async () => {
     try {
-      const result = await fetchAppointments(pagination.page, pagination.pageSize);
+      const result = await fetchAppointments(pagination.page, pagination.pageSize, {
+        excludeSpeciality: 'Physiotherapist',
+      });
       if (result.success && result.data) {
         setAppointments(result.data.appointments);
         setPagination(result.data.pagination);
@@ -389,8 +433,11 @@ export default function AppointmentsPage() {
       accessorKey: 'date',
       cell: (appointment: Appointment) => (
         <div className={appointment.status === 'CANCELLED' ? 'text-gray-500 opacity-75' : ''}>
-          <div className={`font-medium ${appointment.status === 'CANCELLED' ? 'text-gray-500' : 'text-gray-900'}`}>
-            {format(new Date(appointment.date), 'MMM d, yyyy')}
+          <div
+            className={`font-medium ${appointment.status === 'CANCELLED' ? 'text-gray-500' : 'text-gray-900'}`}
+            title={format(new Date(appointment.date), 'MMM d, yyyy')}
+          >
+            {format(new Date(appointment.date), 'MMM d')}
           </div>
           <div className="text-sm">{appointment.time}</div>
         </div>
@@ -467,7 +514,7 @@ export default function AppointmentsPage() {
       header: 'Visit progress',
       accessorKey: 'checkInAt',
       cell: (appointment: Appointment) => (
-        <div className="flex flex-col gap-1 min-w-[140px]">
+        <div className="flex flex-col gap-1 min-w-[120px]">
           {/* Check-in */}
           {appointment.checkInAt ? (
             <span className="text-xs text-green-700 inline-flex items-center gap-1">
@@ -573,7 +620,7 @@ export default function AppointmentsPage() {
       hideOnMobile: true,
       cell: (appointment: Appointment) => (
         <div className="text-xs text-gray-500">
-          {format(new Date(appointment.createdAt), 'MMM d, yyyy')}
+          {format(new Date(appointment.createdAt), 'MMM d')}
           <div>{format(new Date(appointment.createdAt), 'h:mm a')}</div>
         </div>
       ),
@@ -585,7 +632,7 @@ export default function AppointmentsPage() {
       hideOnMobile: true,
       cell: (appointment: Appointment) => (
         <div className="text-xs text-gray-500">
-          {format(new Date(appointment.updatedAt), 'MMM d, yyyy')}
+          {format(new Date(appointment.updatedAt), 'MMM d')}
           <div>{format(new Date(appointment.updatedAt), 'h:mm a')}</div>
         </div>
       ),
@@ -654,16 +701,10 @@ export default function AppointmentsPage() {
   };
 
   // --- Handlers for calendar integration ---
-  const handleDayClick = (date: Date) => {
-    setSelectedDateForDrawer(date);
-    setIsDrawerOpen(true);
-  };
-
   const handleAppointmentClick = (appointment: Appointment) => {
-    setSelectedAppointment(appointment);
-    setIsNewAppointment(false);
-    setPrefilledTimeForModal(undefined);
-    setIsModalOpen(true);
+    // Open the right-side details drawer for the clicked appointment (same
+    // drawer the list view uses).
+    openDetailDrawer(appointment.id);
   };
 
   const handleBookAgain = (appointment: Appointment) => {
@@ -674,18 +715,12 @@ export default function AppointmentsPage() {
     setIsModalOpen(true);
   };
 
-  const handleDrawerAppointmentClick = (appointment: Appointment) => {
-    handleAppointmentClick(appointment);
-    setIsDrawerOpen(false);
-  };
-
   const handleDrawerAddSlotClick = (date: Date, time: string) => {
     setSelectedDate(date);
     setPrefilledTimeForModal(time);
     setSelectedAppointment(null);
     setIsNewAppointment(true);
     setIsModalOpen(true);
-    setIsDrawerOpen(false);
   };
 
   const handleSaveAppointment = async (appointment: Appointment) => {
@@ -734,42 +769,97 @@ export default function AppointmentsPage() {
           </div>
         </div>
       </div>
-      {/* Mobile: Month filter and count for list view */}
+      {/* List view: search (submitted) + date filter + sort controls */}
       {viewMode === 'list' && (
-        <>
-          <div className="sm:hidden px-4 mb-2 flex items-center gap-2">
-            <button
-              className="p-2 rounded-full bg-[#F3E8FF] text-[#8B5C9E] hover:bg-[#E9D5FF]"
-              onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-              aria-label="Previous month"
+        <div className="px-4 mb-2 flex flex-col sm:flex-row sm:items-center gap-2">
+          {/* Search — runs on Enter or the Search button, not while typing */}
+          <div className="flex items-stretch gap-2 flex-1 max-w-md">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search by name, phone or email…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') runSearch();
+                }}
+                className="pl-9 pr-9 bg-white text-gray-900 border-gray-200"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  aria-label="Clear search"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <Button
+              size="sm"
+              className="h-10 bg-[#8B5C9E] text-white hover:bg-[#7A4F8C]"
+              onClick={runSearch}
             >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-base font-semibold text-[#8B5C9E]">
-              {format(selectedMonth, 'MMMM yyyy')}
-            </span>
-            <button
-              className="p-2 rounded-full bg-[#F3E8FF] text-[#8B5C9E] hover:bg-[#E9D5FF]"
-              onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-              aria-label="Next month"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+              <Search className="h-3.5 w-3.5 mr-1" />
+              Search
+            </Button>
           </div>
-          <div className="sm:hidden px-4 mb-2 flex items-center justify-between">
-            <span className="text-sm text-gray-700">Appointments this month:</span>
-            <span className="text-base font-semibold text-[#8B5C9E]">{pagination.total}</span>
+
+          {/* Single-date filter */}
+          <div className="flex items-center gap-1">
+            <Input
+              type="date"
+              value={listDate}
+              onChange={(e) => setListDate(e.target.value)}
+              aria-label="Filter by date"
+              className="h-10 w-[150px] bg-white text-gray-900 border-gray-200"
+            />
+            {listDate && (
+              <button
+                type="button"
+                onClick={() => setListDate('')}
+                aria-label="Clear date filter"
+                className="p-1.5 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                title="Clear date"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
-        </>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-10 gap-2 text-[#8B5C9E] border-gray-200 bg-white">
+                <ArrowUpDown className="h-3.5 w-3.5" />
+                <span className="whitespace-nowrap">Sort: {activeSort.label}</span>
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-white">
+              {SORT_OPTIONS.map((opt) => (
+                <DropdownMenuItem
+                  key={opt.key}
+                  onClick={() => setSortKey(opt.key)}
+                  className={`cursor-pointer text-sm ${opt.key === sortKey ? 'bg-[#F3E8FF] text-[#8B5C9E] font-medium' : 'text-gray-700'}`}
+                >
+                  {opt.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="text-sm text-gray-500 sm:ml-auto whitespace-nowrap">
+            {pagination.total} appointment{pagination.total === 1 ? '' : 's'}
+          </div>
+        </div>
       )}
       {viewMode === 'list' ? (
-        <Card className="mt-4 overflow-hidden border-0 shadow-none bg-transparent">
-          <div className="overflow-visible w-full">
+        <Card className="mt-4 border-0 shadow-none bg-transparent">
+          <div className="overflow-x-auto w-full">
             <DataTable
               columns={columns}
               data={appointments}
-              searchable
-              sortable
               loading={isLoading}
             />
             <Pagination 
@@ -783,20 +873,9 @@ export default function AppointmentsPage() {
         <Card className="mt-4 p-4 overflow-hidden border-0 shadow-none bg-transparent">
           <AdminCalendar
             appointments={calendarAppointments}
-            onDayClick={handleDayClick}
             onAppointmentClick={handleAppointmentClick}
-          />
-          <DayAppointmentsDrawer
-            isOpen={isDrawerOpen}
-            onClose={() => setIsDrawerOpen(false)}
-            selectedDate={selectedDateForDrawer}
-            allAppointments={calendarAppointments}
-            onAppointmentClick={handleDrawerAppointmentClick}
             onAddSlotClick={handleDrawerAddSlotClick}
-            getStatusColorClass={() => ''}
-            workingHoursStart={8}
-            workingHoursEnd={20}
-            timeSlotIntervalMinutes={30}
+            enableViewSwitcher
           />
           {isModalOpen && (
             <AppointmentModal

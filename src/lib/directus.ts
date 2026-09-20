@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { createDirectus, rest, readItems, readItem, createItem, updateItem, deleteItem, type RestCommand, aggregate } from '@directus/sdk';
+import { createDirectus, rest, readItems, readItem, createItem, updateItem, deleteItem, uploadFiles, type RestCommand, aggregate } from '@directus/sdk';
 import { ProcedureSurgery } from '@/types/procedure-surgery';
 import { GalleryImage, GalleryCategory } from '@/types/gallery';
 import { ClinicalVideo, VideoCategory } from '@/types/clinical-videos';
@@ -95,6 +95,7 @@ export interface BlogPost {
   category: string;
   reading_time: number;
   status: string;
+  publish_at?: string | null;
   meta_title?: string;
   meta_description?: string;
   source_url?: string;
@@ -144,6 +145,43 @@ export interface LandingPage {
   parent_slug?: string;
 }
 
+export interface FellowshipApplication {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  qualification: string;
+  message: string | null;
+  resume: string | null;
+  status: string;
+  date_created: string;
+  date_updated: string | null;
+}
+
+/**
+ * Alumni ("Hall of Fame") record. This collection is created and managed
+ * entirely inside the Directus portal — editors add each alumnus (photo +
+ * details) there and published records render on the public /our-alumni page.
+ * There is no public submission form.
+ */
+export interface AlumniMember {
+  id: string;
+  name: string;
+  /** Directus file id of the alumnus photo. */
+  photo: string | null;
+  /** Resolved public asset URL, added server-side (not a Directus column). */
+  photoUrl?: string;
+  batch_year?: string | null;
+  qualification?: string | null;
+  current_position?: string | null;
+  hospital?: string | null;
+  city?: string | null;
+  testimonial?: string | null;
+  sort?: number | null;
+  status?: string;
+  date_created?: string;
+}
+
 interface DirectusSchema {
   blog_content: BlogPost[];
   educational_content: EducationalContent[];
@@ -153,6 +191,111 @@ interface DirectusSchema {
   staff_info: StaffMember[];
   publications: Publication[];
   landing_pages: LandingPage[];
+  fellowship_applications: FellowshipApplication[];
+  alumni: AlumniMember[];
+}
+
+export interface FellowshipApplicationInput {
+  name: string;
+  email: string;
+  phone: string;
+  qualification: string;
+  message?: string;
+  /** Signed ImageKit URL of the uploaded resume (convenience link; expires). */
+  resume_url?: string;
+  /** ImageKit file id of the uploaded resume (used to regenerate signed URLs). */
+  resume_file_id?: string;
+}
+
+/**
+ * Create a fellowship application record in Directus.
+ *
+ * SERVER-ONLY: this writes using the admin token (DIRECTUS_ADMIN_TOKEN), which
+ * is never exposed to the browser bundle. The applicant data is private, so the
+ * `fellowship_applications` collection is not readable by the public role —
+ * submissions are reviewed by admins inside Directus.
+ */
+export async function createFellowshipApplicationItem(data: FellowshipApplicationInput) {
+  if (!directusAdminToken) {
+    throw new Error(
+      'DIRECTUS_ADMIN_TOKEN is required to submit fellowship applications. It must be set on the server.'
+    );
+  }
+
+  return client.request(
+    createItem('fellowship_applications', {
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      qualification: data.qualification,
+      message: data.message?.trim() ? data.message.trim() : null,
+      status: 'PENDING',
+      // Only include the resume fields when present so submissions still work
+      // before these fields are added to the collection (see
+      // scripts/add-fellowship-resume-url-field.mjs). Resumes now live on
+      // ImageKit; we store the signed URL + file id here, not a Directus file.
+      ...(data.resume_url ? { resume_url: data.resume_url } : {}),
+      ...(data.resume_file_id ? { resume_file_id: data.resume_file_id } : {}),
+    })
+  );
+}
+
+// NOTE: Fellowship resumes are no longer uploaded to Directus files — they are
+// stored privately on ImageKit (see src/lib/imagekit.ts) and referenced from the
+// `fellowship_applications` record via `resume_url` + `resume_file_id`.
+
+/**
+ * Upload a generated visit-summary PDF to Directus file storage and return the
+ * new file id.
+ *
+ * SERVER-ONLY: uses the admin token. These files contain medical data, so they
+ * are NOT exposed via a public /assets link — they are read back only through
+ * the authenticated admin proxy route (see fetchVisitSummaryAsset).
+ */
+export async function uploadVisitSummaryPdf(pdf: Buffer, filename: string): Promise<string> {
+  if (!directusAdminToken) {
+    throw new Error(
+      'DIRECTUS_ADMIN_TOKEN is required to store visit summaries. It must be set on the server.'
+    );
+  }
+
+  const formData = new FormData();
+  formData.append('title', filename.replace(/\.pdf$/i, ''));
+  // The file part MUST be appended last for Directus to parse it correctly.
+  const blob = new Blob([pdf], { type: 'application/pdf' });
+  formData.append('file', blob, filename);
+
+  const result: any = await client.request(uploadFiles(formData));
+  const id = Array.isArray(result) ? result[0]?.id : result?.id;
+  if (!id) {
+    throw new Error('Visit summary upload failed: Directus did not return a file id.');
+  }
+  return id as string;
+}
+
+/**
+ * Fetch a stored file from Directus using the admin token, for streaming back
+ * through an authenticated route. Returns the raw fetch Response (caller streams
+ * `res.body`) or null if unavailable.
+ *
+ * SERVER-ONLY: never call from the browser — it uses the admin token.
+ */
+export async function fetchVisitSummaryAsset(fileId: string): Promise<Response | null> {
+  if (!directusAdminToken) {
+    console.error('DIRECTUS_ADMIN_TOKEN is required to read visit summaries.');
+    return null;
+  }
+
+  const res = await fetch(`${directusUrl}/assets/${encodeURIComponent(fileId)}`, {
+    headers: { Authorization: `Bearer ${directusAdminToken}` },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    console.error(`Failed to fetch visit summary asset ${fileId}: ${res.status}`);
+    return null;
+  }
+  return res;
 }
 
 function toAssetUrl(fileId: string): string {
@@ -194,6 +337,104 @@ export function getPublicImageUrl(imageId: string | null): string {
   return `${directusUrl}/assets/${imageId}`;
 }
 
+/**
+ * Fetch published alumni for the public Hall of Fame page (/our-alumni).
+ *
+ * Reads the `alumni` collection (created/managed in the Directus portal) and
+ * returns only `status = published` records, ordered by the manual `sort` field
+ * then newest first. Each record's `photo` file id is resolved to an asset URL.
+ * Optional/empty fields are tolerated so the page still renders if an editor
+ * fills in only some of the details.
+ *
+ * This runs server-side with the Directus token (the page is server-rendered),
+ * so photos use `getImageUrl` — the same token-authenticated asset URL the
+ * gallery and staff pages use — rather than relying on public file permissions.
+ */
+export async function getAlumni(): Promise<AlumniMember[]> {
+  try {
+    const response = await client.request(
+      readItems('alumni', {
+        fields: [
+          'id',
+          'name',
+          'photo',
+          'batch_year',
+          'qualification',
+          'current_position',
+          'hospital',
+          'city',
+          'testimonial',
+          'sort',
+          'status',
+          'date_created',
+        ],
+        filter: { status: { _eq: 'published' } },
+        sort: ['sort', '-date_created'],
+        limit: -1,
+      })
+    );
+
+    const items = Array.isArray(response) ? response : (response as any).data || [];
+
+    return (items as AlumniMember[]).map((item) => ({
+      ...item,
+      photoUrl: item.photo ? getImageUrl(item.photo) : undefined,
+    }));
+  } catch (error) {
+    console.error('Error fetching alumni:', error);
+    return [];
+  }
+}
+
+// A blog post is live when it is published AND its scheduled go-live time has
+// passed. Posts with no publish_at are treated as live immediately, so every
+// existing post keeps behaving exactly as it did before scheduling existed.
+// `$NOW` is resolved by Directus, so go-live does not depend on this server's
+// clock agreeing with the CMS.
+function liveBlogPostFilter(extraFilters: Record<string, any> = {}) {
+  return {
+    ...extraFilters,
+    status: { _eq: 'published' },
+    _or: [
+      { publish_at: { _null: true } },
+      { publish_at: { _lte: '$NOW' } }
+    ]
+  };
+}
+
+// Directus rejects the whole query with a 403 when publish_at does not exist on
+// blog_content yet. Fall back to the plain published filter in that case rather
+// than serving an empty blog.
+function isMissingPublishAtField(error: any): boolean {
+  try {
+    return JSON.stringify(error?.errors ?? error?.message ?? error ?? '').includes('publish_at');
+  } catch {
+    return false;
+  }
+}
+
+async function readLiveBlogPosts(
+  activeClient: any,
+  query: Record<string, any>,
+  extraFilters: Record<string, any> = {}
+) {
+  try {
+    return await activeClient.request(
+      readItems('blog_content', { ...query, filter: liveBlogPostFilter(extraFilters) })
+    );
+  } catch (error) {
+    if (!isMissingPublishAtField(error)) throw error;
+
+    console.warn('blog_content.publish_at not found in Directus - scheduled publishing is inactive');
+    return activeClient.request(
+      readItems('blog_content', {
+        ...query,
+        filter: { ...extraFilters, status: { _eq: 'published' } }
+      })
+    );
+  }
+}
+
 // Function to get all blog posts
 export async function getBlogPosts(): Promise<BlogPost[]> {
   try {
@@ -203,27 +444,25 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
       return [];
     }
     
-    const response = await activeClient.request(
-      readItems('blog_content', {
-        fields: [
-          'id',
-          'title',
-          'slug',
-          'featured_image_url',
-          'excerpt',
-          'date_created',
-          'content_html',
-          'content_text',
-          'category',
-          'reading_time',
-          'status',
-          'meta_title',
-          'meta_description',
-          'source_url',
-          'is_featured'
-        ]
-      })
-    );
+    const response = await readLiveBlogPosts(activeClient, {
+      fields: [
+        'id',
+        'title',
+        'slug',
+        'featured_image_url',
+        'excerpt',
+        'date_created',
+        'content_html',
+        'content_text',
+        'category',
+        'reading_time',
+        'status',
+        'meta_title',
+        'meta_description',
+        'source_url',
+        'is_featured'
+      ]
+    });
 
     const data = handleDirectusResponse<BlogPost>(response);
     
@@ -242,8 +481,9 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
 // Function to get a single post by slug
 export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
   try {
-    const response = await client.request(
-      readItems('blog_content', {
+    const response = await readLiveBlogPosts(
+      client,
+      {
         fields: [
           'id',
           'title',
@@ -261,12 +501,9 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
           'source_url',
           'is_featured'
         ],
-        filter: {
-          slug: { _eq: slug },
-          status: { _eq: 'published' }
-        },
         limit: 1
-      })
+      },
+      { slug: { _eq: slug } }
     );
 
     const post = (response as BlogPost[])?.[0] || null;
@@ -287,16 +524,16 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
 export async function getRelatedPosts(currentSlug: string, category?: string): Promise<BlogPost[]> {
   try {
     const filters: any = {
-      slug: { _neq: currentSlug },
-      status: { _eq: 'published' }
+      slug: { _neq: currentSlug }
     };
 
     if (category) {
       filters.category = { _eq: category };
     }
 
-    const response = await client.request(
-      readItems('blog_content', {
+    const response = await readLiveBlogPosts(
+      client,
+      {
         fields: [
           'id',
           'title',
@@ -307,10 +544,10 @@ export async function getRelatedPosts(currentSlug: string, category?: string): P
           'category',
           'reading_time'
         ],
-        filter: filters,
         limit: 3,
         sort: ['-date_created']
-      })
+      },
+      filters
     );
 
     const posts = (response as BlogPost[]) || [];

@@ -30,19 +30,30 @@ export default function ContactPage() {
       <SchemaMarkup schema={schemas} />
       <SiteHeader theme="light" />
       
-      <main className="pt-24 md:pt-32 pb-16">
+      <main className="pb-16">
         {/* Hero Section */}
-        <div className="gradient-soi-care-wellness py-16 md:py-24">
-          <div className="container mx-auto px-4">
+        <section className="relative overflow-hidden pt-32 md:pt-40 pb-16 md:pb-24">
+          <div className="absolute inset-0 z-0">
+            <Image
+              src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=2070&auto=format&fit=crop"
+              alt=""
+              fill
+              priority
+              className="object-cover"
+              unoptimized
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-soi-navy-700/85 via-soi-navy-800/85 to-soi-pink-600/70" />
+          </div>
+          <div className="relative z-10 container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
-              <h1 className="text-4xl md:text-5xl font-bold text-soi-navy-800 mb-4">Contact Us</h1>
-              <p className="text-lg text-soi-navy-600">
-                Have questions about our procedures or want to schedule an appointment? 
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Contact Us</h1>
+              <p className="text-lg text-white/90">
+                Have questions about our procedures or want to schedule an appointment?
                 Our team is here to help you with all your orthopedic needs.
               </p>
             </div>
           </div>
-        </div>
+        </section>
         
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">

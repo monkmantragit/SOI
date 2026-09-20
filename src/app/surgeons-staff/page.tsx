@@ -57,11 +57,14 @@ export default async function SurgeonsStaffPage({ searchParams }: StaffPageProps
   console.log('Available categories:', Object.keys(groupedStaff));
   console.log('All staff:', allStaff.map(s => ({ title: s.title, category: s.category })));
 
-  // Define category mapping with icons - Dr. Naveen first, Associate Consultant MUST be 2nd, Clinic Staff last
+  // Define category mapping with icons - Dr. Naveen first, Consultants MUST be 2nd, Clinic Staff last.
+  // Display label is "Consultants" but the Directus category values remain
+  // "Associate Consultant" / "Consultant" so existing staff records keep
+  // matching without a data migration.
   const categoryConfig: Record<string, { title: string; icon: any; priority: number }> = {
     'Director': { title: 'Director', icon: Award, priority: 1 },
-    'Associate Consultant': { title: 'Associate Consultant', icon: Award, priority: 2 }, // MUST be 2nd - using exact category name
-    'Consultant': { title: 'Associate Consultant', icon: Award, priority: 2 }, // Backup for different naming
+    'Associate Consultant': { title: 'Consultants', icon: Award, priority: 2 },
+    'Consultant': { title: 'Consultants', icon: Award, priority: 2 }, // Backup for different naming
     'Sports Shoulder Clinic': { title: 'Sports Shoulder Clinic', icon: Activity, priority: 2.5 }, // Specialized sports shoulder department
     'Sports Psychologist': { title: 'Sports Psychologist', icon: UserPlus, priority: 3 },
     'Sports Orthopedics Fellows': { title: 'Sports Orthopedics Fellows', icon: Users, priority: 4 },
@@ -84,8 +87,19 @@ export default async function SurgeonsStaffPage({ searchParams }: StaffPageProps
       
       <main>
         {/* Hero Section - More subtle and refined */}
-        <section className="relative bg-gradient-to-br from-soi-navy-600 via-soi-navy-700 to-soi-navy-800 pt-20 pb-12">
-          <Container>
+        <section className="relative pt-20 pb-12 overflow-hidden">
+          <div className="absolute inset-0 z-0">
+            <Image
+              src="https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?q=80&w=2070&auto=format&fit=crop"
+              alt=""
+              fill
+              priority
+              className="object-cover"
+              unoptimized
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-soi-navy-600/85 via-soi-navy-700/85 to-soi-navy-800/90" />
+          </div>
+          <Container className="relative z-10">
             {/* Breadcrumb */}
             <nav className="flex items-center space-x-2 text-sm text-white/60 mb-6">
               <Link href="/" className="hover:text-white transition-colors">Home</Link>

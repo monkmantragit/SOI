@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Send } from 'lucide-react';
+import { submitContactEnquiry } from '../actions';
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -12,9 +13,13 @@ export default function ContactForm() {
     subject: 'General Inquiry',
   });
   
+  // Hidden from real users; only bots fill it in. See the contact server action.
+  const [honeypot, setHoneypot] = useState('');
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [statusMessage, setStatusMessage] = useState('');
   
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -61,9 +66,23 @@ export default function ContactForm() {
     setIsSubmitting(true);
     
     try {
-      // In a real application, you would send this data to your backend
-      // For now, we'll simulate a successful submission after a delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const submission = new FormData();
+      submission.append('name', formData.name.trim());
+      submission.append('email', formData.email.trim());
+      submission.append('phone', formData.phone.trim());
+      submission.append('subject', formData.subject);
+      submission.append('message', formData.message.trim());
+      submission.append('company', honeypot);
+      
+      const result = await submitContactEnquiry(null, submission);
+      
+      setStatusMessage(result.message);
+      
+      if (!result.success) {
+        setSubmitStatus('error');
+        setTimeout(() => setSubmitStatus('idle'), 8000);
+        return;
+      }
       
       // Reset form
       setFormData({
@@ -75,11 +94,12 @@ export default function ContactForm() {
       });
       
       setSubmitStatus('success');
-      setTimeout(() => setSubmitStatus('idle'), 5000);
+      setTimeout(() => setSubmitStatus('idle'), 8000);
     } catch (error) {
       console.error('Error submitting form:', error);
+      setStatusMessage('There was an error sending your message. Please try again.');
       setSubmitStatus('error');
-      setTimeout(() => setSubmitStatus('idle'), 5000);
+      setTimeout(() => setSubmitStatus('idle'), 8000);
     } finally {
       setIsSubmitting(false);
     }
@@ -89,15 +109,29 @@ export default function ContactForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       {submitStatus === 'success' && (
         <div className="p-4 bg-soi-mint-50 text-soi-mint-800 rounded-lg border border-soi-mint-200">
-          Thank you for your message! We'll get back to you soon.
+          {statusMessage || "Thank you for your message! We'll get back to you soon."}
         </div>
       )}
       
       {submitStatus === 'error' && (
         <div className="p-4 bg-red-50 text-red-800 rounded-lg border border-red-200">
-          There was an error sending your message. Please try again.
+          {statusMessage || 'There was an error sending your message. Please try again.'}
         </div>
       )}
+      
+      {/* Honeypot: hidden from users and screen readers, attractive to bots. */}
+      <div className="hidden" aria-hidden="true">
+        <label htmlFor="company">Company</label>
+        <input
+          type="text"
+          id="company"
+          name="company"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

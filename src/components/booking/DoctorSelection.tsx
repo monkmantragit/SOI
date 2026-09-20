@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Star, Clock, Calendar, MapPin, Search, Filter, X, Users, AlertCircle } from 'lucide-react';
+import { Star, Clock, Calendar, MapPin, Search, Filter, X, Users, AlertCircle, Building2, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import type { Doctor } from '@/types/booking';
@@ -21,6 +21,22 @@ const formatAvailabilityDate = (availabilityDate: Date | string | undefined): st
   // Format as "Jan 15" for other dates
   return format(date, 'MMM d');
 };
+
+// Dr. Naveen also holds OP clinics at Manipal Hospitals. Those appointments are
+// booked through the hospital's own system, so they sit after our clinic slots
+// as external links rather than as selectable doctors.
+const manipalProfiles = [
+  {
+    name: 'Manipal Hospitals, Electronic City',
+    description: 'Dr. Naveen Kumar L V — book on the hospital site',
+    url: 'https://www.manipalhospitals.com/electronicscity/doctors/dr-naveen-kumar-l-v-orthopaedician/',
+  },
+  {
+    name: 'Manipal Hospitals, Sarjapur Road',
+    description: 'Dr. Naveen Kumar L V — book on the hospital site',
+    url: 'https://www.manipalhospitals.com/sarjapurroad/doctors/dr-naveen-kumar-l-v-orthopaedician/',
+  },
+];
 
 interface DoctorCardProps {
   doctor: Doctor;
@@ -176,7 +192,9 @@ const DoctorSelection = ({ onNext }: DoctorSelectionProps = {}) => {
       try {
         setIsLoading(true);
         console.log('DoctorSelection: Fetching /api/doctors...');
-        const response = await fetch('/api/doctors');
+        // Hide Physiotherapists from this list — they're booked via a separate
+        // modal triggered from /physiotherapy.
+        const response = await fetch('/api/doctors?excludeSpeciality=Physiotherapist');
         console.log('DoctorSelection: API response status:', response.status);
 
         if (!response.ok) {
@@ -408,6 +426,41 @@ const DoctorSelection = ({ onNext }: DoctorSelectionProps = {}) => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Hospital OP bookings — handled on Manipal's own site */}
+        <div className="pt-2">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-px flex-1 bg-soi-pink-200" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-soi-navy-500">
+              Or book at a hospital
+            </span>
+            <div className="h-px flex-1 bg-soi-pink-200" />
+          </div>
+          <p className="text-sm text-soi-navy-600 mb-3">
+            Dr. Naveen also consults at Manipal Hospitals. These appointments are booked on the
+            hospital&apos;s own site and open in a new tab.
+          </p>
+          <div className="space-y-3">
+            {manipalProfiles.map((hospital) => (
+              <a
+                key={hospital.url}
+                href={hospital.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-4 w-full rounded-2xl border border-soi-pink-200 bg-white p-4 transition-all hover:border-soi-pink-400 hover:shadow-md"
+              >
+                <div className="p-2.5 rounded-xl bg-soi-mint-100 flex-shrink-0">
+                  <Building2 className="w-5 h-5 text-soi-mint-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-semibold text-soi-navy-800">{hospital.name}</p>
+                  <p className="text-sm text-soi-navy-600 mt-0.5">{hospital.description}</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-soi-navy-400 flex-shrink-0" />
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Filter Sheet */}

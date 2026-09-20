@@ -4,10 +4,41 @@ import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { HeroSection } from './components/HeroSection';
 import { VideoCard } from './components/VideoCard';
+import { ExternalVideoCard } from './components/ExternalVideoCard';
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ClinicalVideo } from '@/types/clinical-videos';
 import { getClinicalVideosAction, getVideoCategoriesAction } from './actions';
+
+// Hardcoded external videos (Frame.io). These cannot be embedded — clicking opens
+// the source URL in a new tab. Kept here instead of Directus until the team
+// decides on a permanent hosting destination.
+// Each entry's thumbnailUrl points to /public/images/educational-bytes/<file>.jpg.
+// If that file doesn't exist, ExternalVideoCard falls back to /images/default-procedure.jpg
+// automatically, so the card always renders an image.
+const externalVideos: Array<{
+  url: string;
+  title: string;
+  doctor: string;
+  category: string;
+  thumbnailUrl: string;
+}> = [
+  // Dr. Sameer — Manipal
+  { url: 'https://f.io/NIhdmV2H', title: 'Dr. Sameer — Manipal Byte 1', doctor: 'Dr. Sameer | MHSR', category: 'Manipal Bytes', thumbnailUrl: '/images/educational-bytes/dr-sameer-byte-1.jpg' },
+  { url: 'https://f.io/wsbZevHh', title: 'Dr. Sameer — Manipal Byte 2', doctor: 'Dr. Sameer | MHSR', category: 'Manipal Bytes', thumbnailUrl: '/images/educational-bytes/dr-sameer-byte-2.jpg' },
+  { url: 'https://f.io/vzPKZKgk', title: 'Dr. Sameer — Manipal Byte 3', doctor: 'Dr. Sameer | MHSR', category: 'Manipal Bytes', thumbnailUrl: '/images/educational-bytes/dr-sameer-byte-3.jpg' },
+  { url: 'https://f.io/adn2e6_w', title: 'Dr. Sameer — Manipal Byte 4', doctor: 'Dr. Sameer | MHSR', category: 'Manipal Bytes', thumbnailUrl: '/images/educational-bytes/dr-sameer-byte-4.jpg' },
+  { url: 'https://f.io/ue4N-Qzk', title: 'Dr. Sameer — Manipal Byte 5', doctor: 'Dr. Sameer | MHSR', category: 'Manipal Bytes', thumbnailUrl: '/images/educational-bytes/dr-sameer-byte-5.jpg' },
+  // Dr. Karthik — Bytes
+  { url: 'https://f.io/O1RBrwaa', title: 'Ankle Sprain', doctor: 'Dr. Karthik', category: 'Foot & Ankle', thumbnailUrl: '/images/educational-bytes/ankle-sprain.jpg' },
+  { url: 'https://f.io/rlo3PbVE', title: 'Regenerative Therapy', doctor: 'Dr. Karthik', category: 'General', thumbnailUrl: '/images/educational-bytes/regenerative-therapy.jpg' },
+  { url: 'https://f.io/PVhgZBvq', title: 'Coccyx Pain', doctor: 'Dr. Karthik', category: 'Spine', thumbnailUrl: '/images/educational-bytes/coccyx-pain.jpg' },
+  { url: 'https://f.io/Mx0IpKjm', title: 'Flat Foot', doctor: 'Dr. Karthik', category: 'Foot & Ankle', thumbnailUrl: '/images/educational-bytes/flat-foot.jpg' },
+  { url: 'https://f.io/-hWjEn2J', title: 'Hip Pain', doctor: 'Dr. Karthik', category: 'Hip', thumbnailUrl: '/images/educational-bytes/hip-pain.jpg' },
+  // Dr. Sreejith T J — MHSR
+  { url: 'https://f.io/Zvc-xk0N', title: 'Educational Byte (English)', doctor: 'Dr. Sreejith T J | MHSR', category: 'Bytes', thumbnailUrl: '/images/educational-bytes/educational-byte-english.jpg' },
+  { url: 'https://f.io/p99Sx0vd', title: 'Educational Byte (Malayalam)', doctor: 'Dr. Sreejith T J | MHSR', category: 'Bytes', thumbnailUrl: '/images/educational-bytes/educational-byte-malayalam.jpg' },
+];
 
 // Fallback videos data for development
 const fallbackVideos = [
@@ -322,7 +353,7 @@ export default function ClinicalVideosPage() {
       {/* Hero Section */}
       <HeroSection
         title="Clinical Videos"
-        description="Watch educational videos on orthopedic conditions, treatments, and surgical procedures by Dr. Naveen Kumar L V."
+        description="Watch educational videos on orthopedic conditions, treatments, and surgical procedures by Dr. Naveen Kumar L V, Dr. Sameer K M, Dr. Karthik D, Dr. Shreejith T."
         imageSrc="/images/team-hero.jpg"
       />
       
@@ -396,7 +427,29 @@ export default function ClinicalVideosPage() {
         
         {/* Video Grid with filtering */}
         <VideoGrid />
-        
+
+        {/* Educational Bytes (hardcoded external videos) */}
+        <section className="mt-16">
+          <div className="mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-soi-navy-800 mb-4">Educational Bytes</h2>
+            <p className="text-soi-navy-600 max-w-3xl">
+              Short clinical-byte videos from our consultants at Sports Orthopedics Institute and Manipal Hospital. Click any card to watch on the original source.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+            {externalVideos.map((v) => (
+              <ExternalVideoCard
+                key={v.url}
+                url={v.url}
+                title={v.title}
+                doctor={v.doctor}
+                category={v.category}
+                thumbnailUrl={v.thumbnailUrl}
+              />
+            ))}
+          </div>
+        </section>
+
         {/* Additional Information */}
         <div className="mt-16 bg-white p-8 rounded-lg shadow-sm border border-soi-purple-100">
           <h3 className="text-xl font-bold text-soi-navy-800 mb-4">About Our Clinical Videos</h3>

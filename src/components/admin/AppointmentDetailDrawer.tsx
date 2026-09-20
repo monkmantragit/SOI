@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
-import { Loader2, LogIn, LogOut, Save, User, Phone, Mail, Calendar, Clock, Undo2, Stethoscope, Printer } from 'lucide-react';
+import { Loader2, LogIn, LogOut, Save, User, Phone, Mail, Calendar, Clock, Undo2, Stethoscope, Printer, FileText, ExternalLink, CalendarClock, Trash2 } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -23,6 +23,11 @@ import {
   undoEngage,
   updateVisitNotes,
   fetchPatientHistoryByPhone,
+  generateVisitSummaryPdf,
+  fetchAvailableSlots,
+  updateAppointment,
+  deleteAppointmentAction,
+  fetchDoctors,
 } from '@/app/actions/admin';
 
 interface Props {
@@ -46,8 +51,12 @@ interface AppointmentDetail {
   checkInAt: Date | null;
   engagedAt: Date | null;
   checkOutAt: Date | null;
+  visitSummaryFileId: string | null;
+  visitSummaryGeneratedAt: Date | string | null;
   createdAt: Date;
   updatedAt: Date;
+  doctorId: string;
+  customerId: string | null;
   doctor: { name: string; speciality: string; fee: number };
   patient: { id: string; phone: string; name: string } | null;
 }
@@ -72,11 +81,27 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
   const [household, setHousehold] = useState<HouseholdPatient[]>([]);
   const [visitNotes, setVisitNotes] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfGeneratedAt, setPdfGeneratedAt] = useState<string | null>(null);
+
+  // Reschedule + delete
+  const [doctors, setDoctors] = useState<Array<{ id: string; name: string; speciality: string | null }>>([]);
+  const [rescheduleDoctorId, setRescheduleDoctorId] = useState('');
+  const [rescheduleDate, setRescheduleDate] = useState(''); // 'yyyy-MM-dd'
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [slots, setSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!open || !appointmentId) {
       setAppointment(null);
       setHousehold([]);
+      setConfirmDelete(false);
+      setSlots([]);
       return;
     }
 
@@ -90,6 +115,19 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
         setAppointment(apt);
         setVisitNotes(apt.visitNotes ?? '');
         setDiagnosis(apt.diagnosis ?? '');
+        setRescheduleDoctorId(apt.doctorId ?? '');
+        setRescheduleDate(format(new Date(apt.date), 'yyyy-MM-dd'));
+        setRescheduleTime(apt.time ?? '');
+        setConfirmDelete(false);
+        if (apt.visitSummaryFileId) {
+          setPdfUrl(`/api/admin/visit-summary/${apt.id}`);
+          setPdfGeneratedAt(
+            apt.visitSummaryGeneratedAt ? new Date(apt.visitSummaryGeneratedAt).toISOString() : null
+          );
+        } else {
+          setPdfUrl(null);
+          setPdfGeneratedAt(null);
+        }
 
         if (apt.phone) {
           const h = await fetchPatientHistoryByPhone(apt.phone);
@@ -107,6 +145,47 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
       cancelled = true;
     };
   }, [open, appointmentId]);
+
+  // Load the list of doctors once the drawer opens (for the reschedule picker).
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const res = await fetchDoctors();
+      if (!cancelled && res.success && Array.isArray(res.data)) {
+        setDoctors(res.data as any);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  // Load the (possibly changed) doctor's vacant slots for the chosen reschedule
+  // date. fetchAvailableSlots already excludes booked slots, breaks and
+  // time-blocks, and returns [] for closed / unavailable days — so we offer
+  // exactly those options and never re-add the appointment's own (booked) time.
+  useEffect(() => {
+    if (!open || !rescheduleDoctorId || !rescheduleDate) {
+      setSlots([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadingSlots(true);
+      const res = await fetchAvailableSlots(rescheduleDoctorId, new Date(rescheduleDate));
+      if (cancelled) return;
+      const list = res.success && Array.isArray(res.data) ? res.data : [];
+      setSlots(list);
+      // Keep the chosen time only if it is genuinely a vacant slot for this
+      // doctor+date; otherwise clear it so a booked/closed-day time can't be submitted.
+      setRescheduleTime((prev) => (prev && list.includes(prev) ? prev : ''));
+      setLoadingSlots(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, rescheduleDoctorId, rescheduleDate]);
 
   const refresh = async () => {
     if (!appointmentId) return;
@@ -183,23 +262,27 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
     }
   };
 
-  const handlePrintNotes = () => {
+  // Opens a print-friendly window using the same stripped, letterhead-friendly
+  // layout as the stored PDF: no app header (clinic prints on their own
+  // letterhead), patient on a single line, diagnosis + clinical notes only,
+  // and a signature/summary area, with blank space top and bottom.
+  const openPrintWindow = () => {
     if (!appointment) return;
-
-    const fmt = (d: Date | string | null) =>
-      d ? format(new Date(d), 'MMM d, yyyy · h:mm a') : '—';
 
     const escapeHtml = (s: string | null | undefined) =>
       (s ?? '').replace(/[&<>"']/g, (c) =>
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!)
       );
 
-    const duration = (() => {
-      if (!appointment.checkInAt || !appointment.checkOutAt) return '—';
-      const ms = new Date(appointment.checkOutAt).getTime() - new Date(appointment.checkInAt).getTime();
-      const mins = Math.round(ms / 60000);
-      return mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
-    })();
+    const dateStr = format(new Date(appointment.date), 'MMM d, yyyy');
+    const patientBits = [
+      appointment.patientName || 'Unknown patient',
+      appointment.phone || null,
+      appointment.email || null,
+      dateStr,
+    ]
+      .filter(Boolean)
+      .map((b) => escapeHtml(b as string));
 
     const html = `<!DOCTYPE html>
 <html>
@@ -208,68 +291,37 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
 <title>Visit Summary - ${escapeHtml(appointment.patientName || '')}</title>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1f2937; padding: 32px; max-width: 800px; margin: 0 auto; line-height: 1.5; }
-  h1 { color: #8B5C9E; margin: 0 0 4px; font-size: 24px; }
-  h2 { color: #6B4A7E; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; margin: 24px 0 8px; border-bottom: 1px solid #E9D5FF; padding-bottom: 4px; }
-  .header { border-bottom: 2px solid #8B5C9E; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
-  .clinic { font-size: 12px; color: #6b7280; }
-  .meta-grid { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; font-size: 14px; }
-  .meta-label { color: #6b7280; }
-  .meta-value { color: #1f2937; font-weight: 500; }
-  .notes-box { background: #faf5ff; border: 1px solid #E9D5FF; border-radius: 6px; padding: 12px; white-space: pre-wrap; font-size: 14px; min-height: 40px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1f2937; line-height: 1.5; margin: 0; }
+  .sheet { padding: 150px 56px 120px; max-width: 800px; margin: 0 auto; }
+  .patient { font-size: 15px; color: #111827; padding-bottom: 8px; margin-bottom: 18px; border-bottom: 1px solid #d1d5db; }
+  .patient .label { font-weight: 700; }
+  h2 { color: #6B4A7E; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 4px; }
+  .section { margin-bottom: 16px; }
+  .body { font-size: 14px; white-space: pre-wrap; }
   .empty { color: #9ca3af; font-style: italic; }
-  .signature { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; font-size: 13px; }
-  .sig-line { border-top: 1px solid #1f2937; padding-top: 4px; margin-top: 32px; color: #6b7280; }
-  @media print { body { padding: 0; } .no-print { display: none; } }
+  .sig { margin-top: 56px; display: flex; justify-content: space-between; }
+  .sig > div { width: 45%; }
+  .sig-line { border-top: 1px solid #1f2937; padding-top: 4px; margin-top: 36px; font-size: 12px; color: #6b7280; }
 </style>
 </head>
 <body>
-  <div class="header">
-    <div>
-      <h1>Visit Summary</h1>
-      <div class="clinic">Sports Orthopedics · Visit record</div>
+  <div class="sheet">
+    <div class="patient"><span class="label">Patient:&nbsp;</span>${patientBits.join('&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;')}</div>
+
+    <div class="section">
+      <h2>Diagnosis</h2>
+      <div class="body ${diagnosis ? '' : 'empty'}">${escapeHtml(diagnosis) || 'No diagnosis recorded.'}</div>
     </div>
-    <div style="text-align: right; font-size: 12px; color: #6b7280;">
-      Generated ${fmt(new Date())}<br/>
-      ID: ${escapeHtml(appointment.id)}
+
+    <div class="section">
+      <h2>Clinical notes</h2>
+      <div class="body ${visitNotes ? '' : 'empty'}">${escapeHtml(visitNotes) || 'No clinical notes recorded.'}</div>
     </div>
-  </div>
 
-  <h2>Patient</h2>
-  <div class="meta-grid">
-    <div class="meta-label">Name</div><div class="meta-value">${escapeHtml(appointment.patientName) || '—'}</div>
-    <div class="meta-label">Phone</div><div class="meta-value">${escapeHtml(appointment.phone) || '—'}</div>
-    <div class="meta-label">Email</div><div class="meta-value">${escapeHtml(appointment.email) || '—'}</div>
-  </div>
-
-  <h2>Doctor</h2>
-  <div class="meta-grid">
-    <div class="meta-label">Name</div><div class="meta-value">Dr. ${escapeHtml(appointment.doctor.name)}</div>
-    <div class="meta-label">Speciality</div><div class="meta-value">${escapeHtml(appointment.doctor.speciality)}</div>
-  </div>
-
-  <h2>Visit timeline</h2>
-  <div class="meta-grid">
-    <div class="meta-label">Scheduled</div><div class="meta-value">${escapeHtml(format(new Date(appointment.date), 'MMM d, yyyy'))} at ${escapeHtml(appointment.time) || '—'}</div>
-    <div class="meta-label">Check-in</div><div class="meta-value">${fmt(appointment.checkInAt)}</div>
-    <div class="meta-label">Engaged</div><div class="meta-value">${fmt(appointment.engagedAt)}</div>
-    <div class="meta-label">Check-out</div><div class="meta-value">${fmt(appointment.checkOutAt)}</div>
-    <div class="meta-label">Duration</div><div class="meta-value">${duration}</div>
-    <div class="meta-label">Status</div><div class="meta-value">${escapeHtml(appointment.status)}</div>
-  </div>
-
-  <h2>Patient's concern (at booking)</h2>
-  <div class="notes-box ${appointment.notes ? '' : 'empty'}">${escapeHtml(appointment.notes) || 'No concerns noted at booking.'}</div>
-
-  <h2>Diagnosis</h2>
-  <div class="notes-box ${diagnosis ? '' : 'empty'}">${escapeHtml(diagnosis) || 'No diagnosis recorded.'}</div>
-
-  <h2>Clinical notes</h2>
-  <div class="notes-box ${visitNotes ? '' : 'empty'}">${escapeHtml(visitNotes) || 'No clinical notes recorded.'}</div>
-
-  <div class="signature">
-    <div class="sig-line">Doctor's signature</div>
-    <div class="sig-line">Date</div>
+    <div class="sig">
+      <div><div class="sig-line">Dr. ${escapeHtml(appointment.doctor.name)} — signature &amp; summary</div></div>
+      <div><div class="sig-line">Date</div></div>
+    </div>
   </div>
 
   <script>
@@ -288,6 +340,37 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
     w.document.close();
   };
 
+  // Persist the current notes and store a PDF copy in Directus. Kept separate
+  // from printing: opening the print window must happen synchronously inside a
+  // click handler (see the Print button), otherwise the browser pop-up blocker
+  // kills a window.open() that runs after an await.
+  const handleSavePdf = async () => {
+    if (!appointmentId) return;
+    setGeneratingPdf(true);
+    try {
+      // Persist edits first so the stored PDF matches what's on screen.
+      await updateVisitNotes(appointmentId, {
+        visitNotes: visitNotes.trim() || null,
+        diagnosis: diagnosis.trim() || null,
+      });
+
+      const res = await generateVisitSummaryPdf(appointmentId);
+      if (res.success && res.data) {
+        setPdfUrl(res.data.url);
+        setPdfGeneratedAt(res.data.generatedAt);
+        toast.success('PDF saved to records');
+        onChanged?.();
+      } else {
+        toast.error(res.error || 'Could not save PDF');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Could not save PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   const handleSaveNotes = async () => {
     if (!appointmentId) return;
     setSaving(true);
@@ -301,6 +384,54 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
       refresh();
     } else {
       toast.error(res.error || 'Failed to save');
+    }
+  };
+
+  const handleReschedule = async () => {
+    if (!appointment) return;
+    if (!rescheduleDoctorId || !rescheduleDate || !rescheduleTime) {
+      toast.error('Pick a doctor, date and time.');
+      return;
+    }
+    setRescheduling(true);
+    // Keep everything the same except doctor/date/time. Re-activate a
+    // cancelled/no-show appointment on reschedule (otherwise updateAppointment
+    // would clear the time).
+    const status =
+      appointment.status === 'CANCELLED' || appointment.status === 'NO_SHOW'
+        ? 'CONFIRMED'
+        : appointment.status;
+    const res = await updateAppointment({
+      id: appointment.id,
+      patientName: appointment.patientName,
+      email: appointment.email,
+      phone: appointment.phone,
+      date: new Date(rescheduleDate),
+      time: rescheduleTime,
+      status,
+      doctorId: rescheduleDoctorId,
+      customerId: appointment.customerId,
+    });
+    setRescheduling(false);
+    if (res.success) {
+      toast.success('Appointment rescheduled');
+      refresh();
+    } else {
+      toast.error(res.error || 'Could not reschedule');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!appointmentId) return;
+    setDeleting(true);
+    const res = await deleteAppointmentAction(appointmentId);
+    setDeleting(false);
+    if (res.success) {
+      toast.success('Appointment deleted');
+      onChanged?.();
+      onClose();
+    } else {
+      toast.error(res.error || 'Could not delete appointment');
     }
   };
 
@@ -338,6 +469,13 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
               <div className="flex items-center gap-2 text-gray-900 font-semibold">
                 <User className="w-4 h-4 text-[#8B5C9E]" />
                 {appointment.patientName || 'Unknown patient'}
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-700">
+                <Stethoscope className="w-3.5 h-3.5 text-[#8B5C9E]" />
+                Dr. {appointment.doctor?.name || '—'}
+                {appointment.doctor?.speciality && (
+                  <span className="text-gray-500">· {appointment.doctor.speciality}</span>
+                )}
               </div>
               {appointment.phone && (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -447,6 +585,73 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
             </Card>
 
             <Card className="p-4 space-y-3">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <CalendarClock className="w-4 h-4 text-[#8B5C9E]" />
+                Reschedule
+              </h3>
+              <p className="text-xs text-gray-500">
+                Currently: Dr. {appointment.doctor?.name || '—'} · {format(new Date(appointment.date), 'MMM d, yyyy')} at {appointment.time || '—'}
+              </p>
+              <div>
+                <label className="text-xs font-medium text-gray-600">Doctor</label>
+                <select
+                  value={rescheduleDoctorId}
+                  onChange={(e) => setRescheduleDoctorId(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#8B5C9E] focus:outline-none focus:ring-[#8B5C9E]"
+                >
+                  {doctors.length === 0 && appointment.doctor?.name && (
+                    <option value={rescheduleDoctorId}>Dr. {appointment.doctor.name}</option>
+                  )}
+                  {doctors.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      Dr. {d.name}
+                      {d.speciality ? ` · ${d.speciality}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-600">New date</label>
+                  <Input
+                    type="date"
+                    value={rescheduleDate}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600">New time</label>
+                  <select
+                    value={rescheduleTime}
+                    onChange={(e) => setRescheduleTime(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#8B5C9E] focus:outline-none focus:ring-[#8B5C9E]"
+                  >
+                    <option value="">{loadingSlots ? 'Loading…' : 'Select time'}</option>
+                    {slots.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {!loadingSlots && rescheduleDate && slots.length === 0 && (
+                <p className="text-xs text-amber-600">
+                  No vacant slots on this date — the doctor isn&apos;t available or the clinic is closed. Please pick another day.
+                </p>
+              )}
+              <Button size="sm" onClick={handleReschedule} disabled={rescheduling || !rescheduleDoctorId || !rescheduleTime}>
+                {rescheduling ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                ) : (
+                  <CalendarClock className="w-3.5 h-3.5 mr-1" />
+                )}
+                Reschedule
+              </Button>
+            </Card>
+
+            <Card className="p-4 space-y-3">
               <h3 className="text-sm font-semibold text-gray-700">Clinical notes</h3>
               <div>
                 <label className="text-xs font-medium text-gray-600">Diagnosis</label>
@@ -473,15 +678,47 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
                   Save notes
                 </Button>
                 <Button
-                  onClick={handlePrintNotes}
+                  onClick={openPrintWindow}
                   variant="outline"
                   size="sm"
-                  title="Open a print-friendly view (also works as Save as PDF)"
+                  title="Open a print-friendly copy (prints on the clinic letterhead)"
                 >
                   <Printer className="w-3.5 h-3.5 mr-1" />
-                  Print / Save as PDF
+                  Print
+                </Button>
+                <Button
+                  onClick={handleSavePdf}
+                  variant="outline"
+                  size="sm"
+                  disabled={generatingPdf}
+                  title="Save a PDF copy to the patient's records in Directus"
+                >
+                  {generatingPdf ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <FileText className="w-3.5 h-3.5 mr-1" />
+                  )}
+                  Save PDF
                 </Button>
               </div>
+
+              {pdfUrl && (
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-[#8B5C9E] hover:underline"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  View saved PDF
+                  <ExternalLink className="w-3 h-3" />
+                  {pdfGeneratedAt && (
+                    <span className="text-gray-400">
+                      · {format(new Date(pdfGeneratedAt), 'MMM d, yyyy · h:mm a')}
+                    </span>
+                  )}
+                </a>
+              )}
             </Card>
 
             {household.length > 0 && (
@@ -526,6 +763,38 @@ export function AppointmentDetailDrawer({ appointmentId, open, onClose, onChange
             <div className="text-xs text-gray-400 space-y-0.5">
               <div>Created: {fmtDateTime(appointment.createdAt)}</div>
               <div>Last updated: {fmtDateTime(appointment.updatedAt)}</div>
+            </div>
+
+            {/* Danger zone: delete */}
+            <div className="border-t border-gray-100 pt-4">
+              {!confirmDelete ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmDelete(true)}
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  Delete appointment
+                </Button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 p-3">
+                  <span className="text-sm text-red-700">Delete this appointment permanently?</span>
+                  <div className="ml-auto flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="bg-red-600 text-white hover:bg-red-700"
+                    >
+                      {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Delete'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

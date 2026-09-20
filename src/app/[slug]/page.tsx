@@ -32,6 +32,7 @@ const RESERVED_SLUGS = new Set([
   'blogs', 'bone-joint-school', 'procedure-surgery', 'surgeons-staff',
   'publications', 'clinical-videos', 'gallery', 'contact', 'physiotherapy',
   'fellowship-programme', 'book-appointment', 'widget', 'admin', 'homepage',
+  'our-alumni', 'search',
 ]);
 
 // Pre-render landing pages and blog posts at build; other slugs fall back to ISR.

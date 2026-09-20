@@ -206,12 +206,14 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
   // Sports Rehabilitation top-level link (replaces the old Resources dropdown)
   const sportsRehabLink = { name: 'Sports Rehabilitation', href: '/physiotherapy' };
 
-  // Media dropdown items (resources and media clubbed together)
+  // Resources dropdown items (order per client spec)
   const mediaLinks = [
-    { name: 'Gallery', href: '/gallery' },
-    { name: 'Blogs', href: '/blogs' },
     { name: 'Clinical Videos', href: '/clinical-videos' },
     { name: 'Publications', href: '/publications' },
+    { name: 'Blogs', href: '/blogs' },
+    { name: 'Gallery', href: '/gallery' },
+    { name: 'Fellowship Programme', href: '/fellowship-programme' },
+    { name: 'Hall of Fame - Our Alumni', href: '/our-alumni' },
     { name: 'Contact', href: '/contact' },
   ];
 
@@ -234,7 +236,7 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
       href: `/bone-joint-school${category === 'All' ? '' : `?category=${encodeURIComponent(category)}`}`
     }))),
     sportsRehabLink,
-    { section: 'Media' },
+    { section: 'Resources' },
     ...mediaLinks,
   ];
 
@@ -385,9 +387,9 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
         } as CSSProperties}
       >
         <div className="container mx-auto px-4 flex items-center h-full">
-          <div className="flex items-center justify-between w-full">
-            {/* Logo and Brand - Webflow-style implementation */}
-            <div className="flex items-center">
+          <div className="flex items-center w-full">
+            {/* Logo and Brand - left flex-1 zone */}
+            <div className="flex items-center flex-1">
               <button 
                 onClick={() => handleNavigation('/')} 
                 className="group flex items-start space-x-3"
@@ -404,29 +406,28 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                   />
                 </div>
                 <div className="flex flex-col justify-start text-left">
-                  <span className={`font-bold text-sm md:text-base leading-tight tracking-tight transition-colors duration-300 ${getTextColor()}`}>
+                  <span className={`whitespace-nowrap font-bold text-sm md:text-base leading-tight tracking-tight transition-colors duration-300 ${getTextColor()}`}>
                     Sports Orthopedics
                   </span>
-                  <span className={`font-medium text-xs md:text-sm leading-tight transition-colors duration-300 ${getTextColor()}`}>
+                  <span className={`whitespace-nowrap font-medium text-xs md:text-sm leading-tight transition-colors duration-300 ${getTextColor()}`}>
                     Institute
                   </span>
                 </div>
               </button>
             </div>
             
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center">
-              <nav className={`px-8 py-2 rounded-full transition-all duration-300 ${
-                isTransparent && !scrolled
-                  ? 'bg-white/10 backdrop-blur-sm'
-                  : 'bg-soi-navy-900/50 backdrop-blur-sm'
-              }`}>
+            {/* Desktop Navigation - centered between the two flex-1 zones */}
+            <nav className={`hidden lg:flex items-center px-4 2xl:px-8 py-2 rounded-full transition-all duration-300 ${
+              isTransparent && !scrolled
+                ? 'bg-white/10 backdrop-blur-sm'
+                : 'bg-soi-navy-900/50 backdrop-blur-sm'
+            }`}>
                 <ul className="flex items-center">
                   {mainNavLinks.map((item) => (
-                    <li key={item.name} className="mr-8">
+                    <li key={item.name} className="mr-5 2xl:mr-8">
                       <button
                         onClick={() => handleNavigation(item.href)}
-                        className={`font-medium transition-colors duration-300 relative group ${
+                        className={`whitespace-nowrap text-sm 2xl:text-base font-medium transition-colors duration-300 relative group ${
                           isTransparent && !scrolled
                             ? 'text-white hover:text-white/80'
                             : 'text-gray-200 hover:text-soi-mint-400'
@@ -442,12 +443,12 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                   
                   {/* Procedures Dropdown */}
                   <li
-                    className="relative mr-8"
+                    className="relative mr-5 2xl:mr-8"
                     onMouseEnter={() => handleMouseEnter('procedures')}
                     onMouseLeave={handleMouseLeave}
                   >
                     <button
-                      className={`font-medium transition-colors duration-300 flex items-center group ${
+                      className={`whitespace-nowrap text-sm 2xl:text-base font-medium transition-colors duration-300 flex items-center group ${
                         isTransparent && !scrolled
                           ? 'text-white hover:text-white/80'
                           : 'text-gray-200 hover:text-soi-mint-400'
@@ -583,7 +584,7 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                     onMouseEnter={() => handleMouseEnter('education')}
                     onMouseLeave={handleMouseLeave}
                   >
-                    <button className={`inline-flex items-center gap-1 px-4 py-2 text-sm font-medium transition-colors ${
+                    <button className={`whitespace-nowrap inline-flex items-center gap-1 px-2 2xl:px-4 py-2 text-sm 2xl:text-base font-medium transition-colors ${
                       isTransparent && !scrolled
                         ? 'text-white hover:text-white/80'
                         : 'text-gray-200 hover:text-soi-mint-400'
@@ -603,6 +604,16 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                         >
                           {/* Categories directly in main dropdown */}
                           <div className="p-4 pr-8">
+                            {/* View All Bone Joint School Link */}
+                            <Link
+                              href="/bone-joint-school"
+                              className="flex items-center px-3 py-2 mb-3 rounded-lg bg-[#8B5C9E]/5 hover:bg-[#8B5C9E]/10 transition-colors"
+                              onClick={() => setActiveDropdown(null)}
+                            >
+                              <BookOpen className="h-4 w-4 mr-2 text-[#8B5C9E]" />
+                              <span className="font-semibold text-[#8B5C9E]">View All Bone Joint School</span>
+                            </Link>
+
                             <h4 className="font-bold text-gray-900 mb-3 px-2">Categories</h4>
                             {categoriesLoading ? (
                               <div className="text-center py-4 text-gray-500">Loading...</div>
@@ -678,10 +689,10 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                   </div>
                   
                   {/* Sports Rehabilitation - top-level link */}
-                  <li className="mr-8">
+                  <li className="mr-5 2xl:mr-8">
                     <button
                       onClick={() => handleNavigation(sportsRehabLink.href)}
-                      className={`font-medium transition-colors duration-300 relative group ${
+                      className={`whitespace-nowrap text-sm 2xl:text-base font-medium transition-colors duration-300 relative group ${
                         isTransparent && !scrolled
                           ? 'text-white hover:text-white/80'
                           : 'text-gray-200 hover:text-soi-mint-400'
@@ -701,7 +712,7 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                     onMouseLeave={handleMouseLeave}
                   >
                     <button
-                      className={`font-medium transition-colors duration-300 flex items-center group ${
+                      className={`whitespace-nowrap text-sm 2xl:text-base font-medium transition-colors duration-300 flex items-center group ${
                         isTransparent && !scrolled
                           ? 'text-white hover:text-white/80'
                           : 'text-gray-200 hover:text-soi-mint-400'
@@ -709,7 +720,7 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                       aria-expanded={activeDropdown === 'media'}
                       aria-haspopup="true"
                     >
-                      Media
+                      Resources
                       <span className={`flex items-center justify-center ml-2 w-5 h-5 ${
                         isTransparent && !scrolled
                           ? 'bg-white/20 group-hover:bg-white/30'
@@ -729,7 +740,7 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                         className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg py-2 z-50 border border-gray-100"
                         onMouseEnter={handleMenuContainerMouseEnter}
                         role="menu"
-                        aria-label="Media"
+                        aria-label="Resources"
                       >
                         {mediaLinks.map((item) => (
                           <button
@@ -746,24 +757,29 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                   </li>
                 </ul>
               </nav>
-              
-              {/* Book an Appointment Button */}
-              <BookingButton 
-                className={`ml-6 px-6 py-3 rounded-full font-medium transition-colors duration-300 shadow-sm hover:shadow-md flex items-center ${
+
+            {/* Right cluster - right flex-1 zone (booking CTA + mobile hamburger) */}
+            <div className="flex items-center justify-end flex-1 gap-2">
+              {/* Desktop Booking Button — compact at lg, full at 2xl+ */}
+              <BookingButton
+                className={`hidden lg:flex px-4 2xl:px-6 py-2 2xl:py-3 rounded-full text-sm 2xl:text-base font-medium transition-colors duration-300 shadow-sm hover:shadow-md items-center whitespace-nowrap ${
                   isTransparent && scrollY < 50
                     ? 'bg-white text-[#8B5C9E] hover:bg-white/90'
                     : 'bg-[#8B5C9E] text-white hover:bg-[#7a4f8a]'
                 }`}
-                icon={<Calendar className="w-5 h-5 mr-2" />}
-                text="Book an Appointment"
+                icon={<Calendar className="w-4 h-4 2xl:w-5 2xl:h-5 mr-1.5 2xl:mr-2" />}
+                text={
+                  <>
+                    <span className="2xl:hidden">Book Now</span>
+                    <span className="hidden 2xl:inline">Book an Appointment</span>
+                  </>
+                }
+                ariaLabel="Book an Appointment"
               />
-            </div>
-            
-            {/* Mobile: Booking & Menu Buttons */}
-            <div className="flex items-center space-x-2 lg:hidden">
+
               {/* Mobile Booking Button (compact) */}
-              <BookingButton 
-                className={`px-3 py-2 rounded-full font-medium transition-colors duration-300 shadow-sm hover:shadow-md flex items-center ${
+              <BookingButton
+                className={`lg:hidden px-3 py-2 rounded-full font-medium transition-colors duration-300 shadow-sm hover:shadow-md flex items-center ${
                   isTransparent && !scrolled
                     ? 'bg-white text-[#8B5C9E] hover:bg-white/90'
                     : 'bg-[#8B5C9E] text-white hover:bg-[#7a4f8a]'
@@ -772,10 +788,10 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                 text=""
                 ariaLabel="Book an Appointment"
               />
-              
-              {/* Mobile Menu Button - with consistent styling */}
+
+              {/* Mobile Menu Button */}
               <button
-                className={`p-2 rounded-full transition-colors duration-300 ${
+                className={`lg:hidden p-2 rounded-full transition-colors duration-300 ${
                   isTransparent && !scrolled
                     ? 'bg-white/20 hover:bg-white/30'
                     : 'bg-soi-navy-600 hover:bg-soi-navy-500'
@@ -791,7 +807,7 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
           </div>
         </div>
       </header>
-      
+
       {/* Mobile Navigation Drawer */}
       <AnimatePresence>
         {mobileMenuOpen && (
@@ -1015,11 +1031,11 @@ export default function SiteHeader({ theme = 'default', className = '' }: SiteHe
                     {sportsRehabLink.name}
                   </button>
 
-                  {/* Media Section */}
+                  {/* Resources Section */}
                   {mediaLinks.length > 0 && (
                     <div className="mt-4">
                       <div className="px-4 pt-2 pb-2 text-sm font-medium text-gray-500 uppercase tracking-wider">
-                        Media
+                        Resources
                       </div>
                       {mediaLinks.map((item) => (
                         <button

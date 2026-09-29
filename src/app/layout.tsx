@@ -20,7 +20,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: {
     default: `${SITE_NAME} | Orthopedic & Sports Injury Specialists in Bangalore`,
-    template: `%s | ${SITE_NAME}`,
+    template: "%s",
   },
   description: SITE_DESCRIPTION,
   keywords: ["orthopedics", "sports medicine", "joint reconstruction", "bone", "joint", "surgery", "knee", "shoulder", "hip", "treatment", "bangalore", "hsr layout"],
